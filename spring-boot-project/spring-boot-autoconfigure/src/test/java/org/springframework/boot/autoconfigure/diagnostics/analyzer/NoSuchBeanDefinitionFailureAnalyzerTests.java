@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,12 +19,12 @@ package org.springframework.boot.autoconfigure.diagnostics.analyzer;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.beans.FatalBeanException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.NoUniqueBeanDefinitionException;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionEvaluationReport;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -37,6 +37,7 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.util.ClassUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -101,7 +102,7 @@ public class NoSuchBeanDefinitionFailureAnalyzerTests {
 		assertDescriptionConstructorMissingType(analysis, StringHandler.class, 0,
 				String.class);
 		assertClassDisabled(analysis, "did not find required class 'com.example.FooBar'",
-				"string");
+				"string", ClassUtils.getShortName(TestTypeClassAutoConfiguration.class));
 		assertActionMissingType(analysis, String.class);
 	}
 
@@ -116,7 +117,7 @@ public class NoSuchBeanDefinitionFailureAnalyzerTests {
 				.getShortName(TestPropertyAutoConfiguration.class.getName());
 		assertClassDisabled(analysis,
 				String.format("auto-configuration '%s' was excluded", configClass),
-				"string");
+				"string", ClassUtils.getShortName(TestPropertyAutoConfiguration.class));
 		assertActionMissingType(analysis, String.class);
 	}
 
@@ -130,7 +131,7 @@ public class NoSuchBeanDefinitionFailureAnalyzerTests {
 				"did not find property 'spring.string.enabled'",
 				TestPropertyAutoConfiguration.class, "string");
 		assertClassDisabled(analysis, "did not find required class 'com.example.FooBar'",
-				"string");
+				"string", ClassUtils.getShortName(TestPropertyAutoConfiguration.class));
 		assertActionMissingType(analysis, String.class);
 	}
 
@@ -169,6 +170,14 @@ public class NoSuchBeanDefinitionFailureAnalyzerTests {
 		assertActionMissingType(analysis, String.class);
 	}
 
+	@Test
+	public void failureAnalysisForUnmatchedQualifier() {
+		FailureAnalysis analysis = analyzeFailure(
+				createFailure(QualifiedBeanConfiguration.class));
+		assertThat(analysis.getDescription()).containsPattern(
+				"@org.springframework.beans.factory.annotation.Qualifier\\(value=\"*alpha\"*\\)");
+	}
+
 	private void assertDescriptionConstructorMissingType(FailureAnalysis analysis,
 			Class<?> component, int index, Class<?> type) {
 		String expected = String.format(
@@ -201,9 +210,9 @@ public class NoSuchBeanDefinitionFailureAnalyzerTests {
 	}
 
 	private void assertClassDisabled(FailureAnalysis analysis, String description,
-			String methodName) {
-		String expected = String.format("Bean method '%s' not loaded because",
-				methodName);
+			String methodName, String className) {
+		String expected = String.format("Bean method '%s' in '%s' not loaded because",
+				methodName, className);
 		assertThat(analysis.getDescription()).contains(expected);
 		assertThat(analysis.getDescription()).contains(description);
 	}
@@ -218,8 +227,8 @@ public class NoSuchBeanDefinitionFailureAnalyzerTests {
 
 	private static void addExclusions(NoSuchBeanDefinitionFailureAnalyzer analyzer,
 			Class<?>... classes) {
-		ConditionEvaluationReport report = (ConditionEvaluationReport) new DirectFieldAccessor(
-				analyzer).getPropertyValue("report");
+		ConditionEvaluationReport report = (ConditionEvaluationReport) ReflectionTestUtils
+				.getField(analyzer, "report");
 		List<String> exclusions = new ArrayList<>(report.getExclusions());
 		for (Class<?> c : classes) {
 			exclusions.add(c.getName());
@@ -248,28 +257,28 @@ public class NoSuchBeanDefinitionFailureAnalyzerTests {
 		return analysis;
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@ImportAutoConfiguration(TestPropertyAutoConfiguration.class)
 	@Import(StringHandler.class)
 	protected static class StringPropertyTypeConfiguration {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@ImportAutoConfiguration(TestPropertyAutoConfiguration.class)
 	@Import(NumberHandler.class)
 	protected static class IntegerPropertyTypeConfiguration {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@ImportAutoConfiguration(TestTypeClassAutoConfiguration.class)
 	@Import(StringHandler.class)
 	protected static class MissingClassOnAutoConfigurationConfiguration {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@ImportAutoConfiguration({ TestPropertyAutoConfiguration.class,
 			TestTypeClassAutoConfiguration.class })
 	@Import(StringHandler.class)
@@ -277,21 +286,21 @@ public class NoSuchBeanDefinitionFailureAnalyzerTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@ImportAutoConfiguration(TestMissingBeanAutoConfiguration.class)
 	@Import(StringNameHandler.class)
 	protected static class StringMissingBeanNameConfiguration {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@ImportAutoConfiguration(TestNullBeanConfiguration.class)
 	@Import(StringHandler.class)
 	protected static class StringNullBeanConfiguration {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	public static class TestPropertyAutoConfiguration {
 
 		@ConditionalOnProperty("spring.string.enabled")
@@ -308,7 +317,7 @@ public class NoSuchBeanDefinitionFailureAnalyzerTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@ConditionalOnClass(name = "com.example.FooBar")
 	public static class TestTypeClassAutoConfiguration {
 
@@ -319,7 +328,7 @@ public class NoSuchBeanDefinitionFailureAnalyzerTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	public static class TestMissingBeanAutoConfiguration {
 
 		@ConditionalOnBean(Integer.class)
@@ -330,12 +339,31 @@ public class NoSuchBeanDefinitionFailureAnalyzerTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	public static class TestNullBeanConfiguration {
 
 		@Bean
 		public String string() {
 			return null;
+		}
+
+	}
+
+	@Configuration(proxyBeanMethods = false)
+	public static class QualifiedBeanConfiguration {
+
+		@Bean
+		public String consumer(@Qualifier("alpha") Thing thing) {
+			return "consumer";
+		}
+
+		@Bean
+		public Thing producer() {
+			return new Thing();
+		}
+
+		class Thing {
+
 		}
 
 	}

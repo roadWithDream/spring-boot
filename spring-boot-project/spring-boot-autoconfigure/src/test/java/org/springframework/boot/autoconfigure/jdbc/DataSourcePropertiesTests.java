@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,14 +16,13 @@
 
 package org.springframework.boot.autoconfigure.jdbc;
 
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.boot.jdbc.EmbeddedDatabaseConnection;
 import org.springframework.boot.test.context.FilteredClassLoader;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 /**
  * Tests for {@link DataSourceProperties}.
@@ -33,9 +32,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Eddú Meléndez
  */
 public class DataSourcePropertiesTests {
-
-	@Rule
-	public final ExpectedException thrown = ExpectedException.none();
 
 	@Test
 	public void determineDriver() {
@@ -71,9 +67,10 @@ public class DataSourcePropertiesTests {
 		properties.setBeanClassLoader(
 				new FilteredClassLoader("org.h2", "org.apache.derby", "org.hsqldb"));
 		properties.afterPropertiesSet();
-		this.thrown.expect(DataSourceProperties.DataSourceBeanCreationException.class);
-		this.thrown.expectMessage("Failed to determine suitable jdbc url");
-		properties.determineUrl();
+		assertThatExceptionOfType(
+				DataSourceProperties.DataSourceBeanCreationException.class)
+						.isThrownBy(properties::determineUrl)
+						.withMessageContaining("Failed to determine suitable jdbc url");
 	}
 
 	@Test

@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,7 +24,6 @@ import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
@@ -49,6 +48,7 @@ import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
@@ -66,9 +66,6 @@ public class RemoteClientConfigurationTests {
 
 	@Rule
 	public OutputCapture output = new OutputCapture();
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
 
 	private AnnotationConfigServletWebServerApplicationContext context;
 
@@ -104,9 +101,9 @@ public class RemoteClientConfigurationTests {
 
 	@Test
 	public void failIfNoSecret() {
-		this.thrown.expect(BeanCreationException.class);
-		this.thrown.expectMessage("required to secure your connection");
-		configure("http://localhost", false);
+		assertThatExceptionOfType(BeanCreationException.class)
+				.isThrownBy(() -> configure("http://localhost", false))
+				.withMessageContaining("required to secure your connection");
 	}
 
 	@Test
@@ -126,15 +123,15 @@ public class RemoteClientConfigurationTests {
 	@Test
 	public void liveReloadDisabled() {
 		configure("spring.devtools.livereload.enabled:false");
-		this.thrown.expect(NoSuchBeanDefinitionException.class);
-		this.context.getBean(OptionalLiveReloadServer.class);
+		assertThatExceptionOfType(NoSuchBeanDefinitionException.class)
+				.isThrownBy(() -> this.context.getBean(OptionalLiveReloadServer.class));
 	}
 
 	@Test
 	public void remoteRestartDisabled() {
 		configure("spring.devtools.remote.restart.enabled:false");
-		this.thrown.expect(NoSuchBeanDefinitionException.class);
-		this.context.getBean(ClassPathFileSystemWatcher.class);
+		assertThatExceptionOfType(NoSuchBeanDefinitionException.class)
+				.isThrownBy(() -> this.context.getBean(ClassPathFileSystemWatcher.class));
 	}
 
 	private void configure(String... pairs) {
@@ -163,7 +160,7 @@ public class RemoteClientConfigurationTests {
 		this.clientContext.refresh();
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class Config {
 
 		@Bean
@@ -186,7 +183,7 @@ public class RemoteClientConfigurationTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class ClientConfig {
 
 		@Bean

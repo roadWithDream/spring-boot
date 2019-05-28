@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,8 +16,8 @@
 
 package sample.test.web;
 
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Test;
 import sample.test.WelcomeCommandLineRunner;
 import sample.test.domain.VehicleIdentificationNumber;
 import sample.test.service.VehicleDetails;
@@ -29,7 +29,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.containsString;
@@ -43,9 +42,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * @author Phillip Webb
  */
-@RunWith(SpringRunner.class)
 @WebMvcTest(UserVehicleController.class)
-public class UserVehicleControllerTests {
+class UserVehicleControllerTests {
 
 	private static final VehicleIdentificationNumber VIN = new VehicleIdentificationNumber(
 			"00000000000000000");
@@ -60,7 +58,7 @@ public class UserVehicleControllerTests {
 	private UserVehicleService userVehicleService;
 
 	@Test
-	public void getVehicleWhenRequestingTextShouldReturnMakeAndModel() throws Exception {
+	void getVehicleWhenRequestingTextShouldReturnMakeAndModel() throws Exception {
 		given(this.userVehicleService.getVehicleDetails("sboot"))
 				.willReturn(new VehicleDetails("Honda", "Civic"));
 		this.mvc.perform(get("/sboot/vehicle").accept(MediaType.TEXT_PLAIN))
@@ -68,7 +66,7 @@ public class UserVehicleControllerTests {
 	}
 
 	@Test
-	public void getVehicleWhenRequestingJsonShouldReturnMakeAndModel() throws Exception {
+	void getVehicleWhenRequestingJsonShouldReturnMakeAndModel() throws Exception {
 		given(this.userVehicleService.getVehicleDetails("sboot"))
 				.willReturn(new VehicleDetails("Honda", "Civic"));
 		this.mvc.perform(get("/sboot/vehicle").accept(MediaType.APPLICATION_JSON))
@@ -77,7 +75,7 @@ public class UserVehicleControllerTests {
 	}
 
 	@Test
-	public void getVehicleWhenRequestingHtmlShouldReturnMakeAndModel() throws Exception {
+	void getVehicleWhenRequestingHtmlShouldReturnMakeAndModel() throws Exception {
 		given(this.userVehicleService.getVehicleDetails("sboot"))
 				.willReturn(new VehicleDetails("Honda", "Civic"));
 		this.mvc.perform(get("/sboot/vehicle.html").accept(MediaType.TEXT_HTML))
@@ -86,23 +84,25 @@ public class UserVehicleControllerTests {
 	}
 
 	@Test
-	public void getVehicleWhenUserNotFoundShouldReturnNotFound() throws Exception {
+	void getVehicleWhenUserNotFoundShouldReturnNotFound() throws Exception {
 		given(this.userVehicleService.getVehicleDetails("sboot"))
 				.willThrow(new UserNameNotFoundException("sboot"));
 		this.mvc.perform(get("/sboot/vehicle")).andExpect(status().isNotFound());
 	}
 
 	@Test
-	public void getVehicleWhenVinNotFoundShouldReturnNotFound() throws Exception {
+	void getVehicleWhenVinNotFoundShouldReturnNotFound() throws Exception {
 		given(this.userVehicleService.getVehicleDetails("sboot"))
 				.willThrow(new VehicleIdentificationNumberNotFoundException(VIN));
 		this.mvc.perform(get("/sboot/vehicle")).andExpect(status().isNotFound());
 	}
 
-	@Test(expected = NoSuchBeanDefinitionException.class)
-	public void welcomeCommandLineRunnerShouldBeAvailable() {
+	@Test
+	void welcomeCommandLineRunnerShouldBeAvailable() {
 		// Since we're a @WebMvcTest WelcomeCommandLineRunner should not be available.
-		this.applicationContext.getBean(WelcomeCommandLineRunner.class);
+		Assertions.assertThatThrownBy(
+				() -> this.applicationContext.getBean(WelcomeCommandLineRunner.class))
+				.isInstanceOf(NoSuchBeanDefinitionException.class);
 	}
 
 }

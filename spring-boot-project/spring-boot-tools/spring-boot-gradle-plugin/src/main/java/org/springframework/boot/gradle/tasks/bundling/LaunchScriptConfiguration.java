@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.gradle.api.Project;
 import org.gradle.api.tasks.bundling.AbstractArchiveTask;
@@ -35,6 +36,10 @@ import org.springframework.boot.loader.tools.FileUtils;
  */
 @SuppressWarnings("serial")
 public class LaunchScriptConfiguration implements Serializable {
+
+	private static final Pattern WHITE_SPACE_PATTERN = Pattern.compile("\\s+");
+
+	private static final Pattern LINE_FEED_PATTERN = Pattern.compile("\n");
 
 	private final Map<String, String> properties = new HashMap<>();
 
@@ -134,11 +139,13 @@ public class LaunchScriptConfiguration implements Serializable {
 	}
 
 	private String removeLineBreaks(String string) {
-		return (string != null) ? string.replaceAll("\\s+", " ") : null;
+		return (string != null) ? WHITE_SPACE_PATTERN.matcher(string).replaceAll(" ")
+				: null;
 	}
 
 	private String augmentLineBreaks(String string) {
-		return (string != null) ? string.replaceAll("\n", "\n#  ") : null;
+		return (string != null) ? LINE_FEED_PATTERN.matcher(string).replaceAll("\n#  ")
+				: null;
 	}
 
 	private void putIfMissing(Map<String, String> properties, String key,

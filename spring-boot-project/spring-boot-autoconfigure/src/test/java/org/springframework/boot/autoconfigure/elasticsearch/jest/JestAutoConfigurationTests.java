@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,18 +27,15 @@ import io.searchbox.client.JestResult;
 import io.searchbox.client.http.JestHttpClient;
 import io.searchbox.core.Get;
 import io.searchbox.core.Index;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
-import org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchNodeTemplate;
 import org.springframework.boot.autoconfigure.gson.GsonAutoConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
-import org.springframework.boot.testsupport.runner.classpath.ClassPathOverrides;
-import org.springframework.boot.testsupport.runner.classpath.ModifiedClassPathRunner;
+import org.springframework.boot.testsupport.testcontainers.ElasticsearchContainer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -52,23 +49,16 @@ import static org.mockito.Mockito.mock;
  * @author Stephane Nicoll
  * @author Andy Wilkinson
  */
-@RunWith(ModifiedClassPathRunner.class)
-@ClassPathOverrides("org.apache.logging.log4j:log4j-core:2.10.0")
+@Deprecated
+@Testcontainers
 public class JestAutoConfigurationTests {
+
+	@Container
+	public static ElasticsearchContainer elasticsearch = new ElasticsearchContainer();
 
 	private ApplicationContextRunner contextRunner = new ApplicationContextRunner()
 			.withConfiguration(AutoConfigurations.of(GsonAutoConfiguration.class,
 					JestAutoConfiguration.class));
-
-	@Before
-	public void preventElasticsearchFromConfiguringNetty() {
-		System.setProperty("es.set.netty.runtime.available.processors", "false");
-	}
-
-	@After
-	public void close() {
-		System.clearProperty("es.set.netty.runtime.available.processors");
-	}
 
 	@Test
 	public void jestClientOnLocalhostByDefault() {
@@ -122,9 +112,9 @@ public class JestAutoConfigurationTests {
 
 	@Test
 	public void jestCanCommunicateWithElasticsearchInstance() {
-		new ElasticsearchNodeTemplate().doWithNode((node) -> this.contextRunner
+		this.contextRunner
 				.withPropertyValues("spring.elasticsearch.jest.uris=http://localhost:"
-						+ node.getHttpPort())
+						+ elasticsearch.getMappedPort())
 				.run((context) -> {
 					JestClient client = context.getBean(JestClient.class);
 					Map<String, String> source = new HashMap<>();
@@ -136,7 +126,7 @@ public class JestAutoConfigurationTests {
 					Get getRequest = new Get.Builder("foo", "1").build();
 					assertThat(execute(client, getRequest).getResponseCode())
 							.isEqualTo(200);
-				}));
+				});
 	}
 
 	private JestResult execute(JestClient client, Action<? extends JestResult> action) {
@@ -156,7 +146,7 @@ public class JestAutoConfigurationTests {
 		}
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class CustomJestClient {
 
 		@Bean
@@ -166,7 +156,7 @@ public class JestAutoConfigurationTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class CustomGson {
 
 		@Bean
@@ -176,7 +166,7 @@ public class JestAutoConfigurationTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@Import(CustomGson.class)
 	static class BuilderCustomizer {
 

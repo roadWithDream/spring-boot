@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,10 +23,8 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.core.Ordered;
 import org.springframework.core.type.classreading.CachingMetadataReaderFactory;
@@ -36,6 +34,7 @@ import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.mockito.Mockito.mock;
 
 /**
@@ -74,15 +73,12 @@ public class AutoConfigurationSorterTests {
 
 	private static final String W2 = AutoConfigureW2.class.getName();
 
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-
 	private AutoConfigurationSorter sorter;
 
 	private AutoConfigurationMetadata autoConfigurationMetadata = mock(
 			AutoConfigurationMetadata.class);
 
-	@Before
+	@BeforeEach
 	public void setup() {
 		this.sorter = new AutoConfigurationSorter(new SkipCycleMetadataReaderFactory(),
 				this.autoConfigurationMetadata);
@@ -144,9 +140,10 @@ public class AutoConfigurationSorterTests {
 	public void byAutoConfigureAfterWithCycle() {
 		this.sorter = new AutoConfigurationSorter(new CachingMetadataReaderFactory(),
 				this.autoConfigurationMetadata);
-		this.thrown.expect(IllegalStateException.class);
-		this.thrown.expectMessage("AutoConfigure cycle detected");
-		this.sorter.getInPriorityOrder(Arrays.asList(A, B, C, D));
+		assertThatIllegalStateException()
+				.isThrownBy(
+						() -> this.sorter.getInPriorityOrder(Arrays.asList(A, B, C, D)))
+				.withMessageContaining("AutoConfigure cycle detected");
 	}
 
 	@Test
@@ -176,9 +173,9 @@ public class AutoConfigurationSorterTests {
 		this.autoConfigurationMetadata = getAutoConfigurationMetadata(A, B, D);
 		this.sorter = new AutoConfigurationSorter(readerFactory,
 				this.autoConfigurationMetadata);
-		this.thrown.expect(IllegalStateException.class);
-		this.thrown.expectMessage("AutoConfigure cycle detected");
-		this.sorter.getInPriorityOrder(Arrays.asList(D, B));
+		assertThatIllegalStateException()
+				.isThrownBy(() -> this.sorter.getInPriorityOrder(Arrays.asList(D, B)))
+				.withMessageContaining("AutoConfigure cycle detected");
 	}
 
 	private AutoConfigurationMetadata getAutoConfigurationMetadata(String... classNames)
@@ -240,7 +237,8 @@ public class AutoConfigurationSorterTests {
 
 	}
 
-	@AutoConfigureAfter(name = "org.springframework.boot.autoconfigure.AutoConfigurationSorterTests$AutoConfigureB")
+	@AutoConfigureAfter(
+			name = "org.springframework.boot.autoconfigure.AutoConfigurationSorterTests$AutoConfigureB")
 	public static class AutoConfigureA2 {
 
 	}
@@ -269,7 +267,8 @@ public class AutoConfigurationSorterTests {
 
 	}
 
-	@AutoConfigureBefore(name = "org.springframework.boot.autoconfigure.AutoConfigurationSorterTests$AutoConfigureB")
+	@AutoConfigureBefore(
+			name = "org.springframework.boot.autoconfigure.AutoConfigurationSorterTests$AutoConfigureB")
 	public static class AutoConfigureW2 {
 
 	}

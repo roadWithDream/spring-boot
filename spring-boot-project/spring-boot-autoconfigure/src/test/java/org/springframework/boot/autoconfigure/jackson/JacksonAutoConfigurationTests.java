@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -47,7 +47,7 @@ import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.LocalDateTime;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.autoconfigure.http.HttpMessageConvertersAutoConfiguration;
@@ -59,7 +59,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -478,8 +477,8 @@ public class JacksonAutoConfigurationTests {
 					.getBean(ObjectMapper.class).getDeserializationConfig();
 			AnnotationIntrospector annotationIntrospector = deserializationConfig
 					.getAnnotationIntrospector().allIntrospectors().iterator().next();
-			assertThat(ReflectionTestUtils.getField(annotationIntrospector,
-					"creatorBinding")).isEqualTo(expectedMode);
+			assertThat(annotationIntrospector)
+					.hasFieldOrPropertyWithValue("creatorBinding", expectedMode);
 		});
 	}
 
@@ -491,7 +490,7 @@ public class JacksonAutoConfigurationTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	protected static class MockObjectMapperConfig {
 
 		@Bean
@@ -502,7 +501,7 @@ public class JacksonAutoConfigurationTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@Import(BazSerializer.class)
 	protected static class ModuleConfig {
 
@@ -542,7 +541,7 @@ public class JacksonAutoConfigurationTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	protected static class ParameterNamesModuleConfig {
 
 		@Bean
@@ -552,7 +551,7 @@ public class JacksonAutoConfigurationTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	protected static class ObjectMapperBuilderCustomConfig {
 
 		@Bean

@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,6 +32,9 @@ import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import org.junit.rules.TemporaryFolder;
+
+import org.springframework.boot.testsupport.BuildOutput;
 import org.springframework.util.Assert;
 import org.springframework.util.StreamUtils;
 
@@ -46,12 +49,15 @@ public final class CommandLineInvoker {
 
 	private final File workingDirectory;
 
-	public CommandLineInvoker() {
-		this(new File("."));
+	private final TemporaryFolder temp;
+
+	public CommandLineInvoker(TemporaryFolder temp) {
+		this(new File("."), temp);
 	}
 
-	public CommandLineInvoker(File workingDirectory) {
+	public CommandLineInvoker(File workingDirectory, TemporaryFolder temp) {
 		this.workingDirectory = workingDirectory;
+		this.temp = temp;
 	}
 
 	public Invocation invoke(String... args) throws IOException {
@@ -69,9 +75,9 @@ public final class CommandLineInvoker {
 	}
 
 	private File findLaunchScript() throws IOException {
-		File unpacked = new File("target/unpacked-cli");
+		File unpacked = new File(this.temp.getRoot(), "unpacked-cli");
 		if (!unpacked.isDirectory()) {
-			File zip = new File("target")
+			File zip = new BuildOutput(getClass()).getRootLocation()
 					.listFiles((pathname) -> pathname.getName().endsWith("-bin.zip"))[0];
 			try (ZipInputStream input = new ZipInputStream(new FileInputStream(zip))) {
 				ZipEntry entry;

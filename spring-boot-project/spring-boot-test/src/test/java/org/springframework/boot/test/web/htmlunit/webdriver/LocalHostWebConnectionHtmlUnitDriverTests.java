@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2017 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,11 +21,10 @@ import java.net.URL;
 import com.gargoylesoftware.htmlunit.BrowserVersion;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebClientOptions;
+import com.gargoylesoftware.htmlunit.WebConsole;
 import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebWindow;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatcher;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -34,6 +33,7 @@ import org.openqa.selenium.Capabilities;
 import org.springframework.core.env.Environment;
 import org.springframework.mock.env.MockEnvironment;
 
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
@@ -47,46 +47,45 @@ import static org.mockito.Mockito.verify;
  */
 public class LocalHostWebConnectionHtmlUnitDriverTests {
 
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-
 	@Mock
 	private WebClient webClient;
 
 	public LocalHostWebConnectionHtmlUnitDriverTests() {
 		MockitoAnnotations.initMocks(this);
 		given(this.webClient.getOptions()).willReturn(new WebClientOptions());
+		given(this.webClient.getWebConsole()).willReturn(new WebConsole());
 	}
 
 	@Test
 	public void createWhenEnvironmentIsNullWillThrowException() {
-		this.thrown.expect(IllegalArgumentException.class);
-		this.thrown.expectMessage("Environment must not be null");
-		new LocalHostWebConnectionHtmlUnitDriver(null);
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new LocalHostWebConnectionHtmlUnitDriver(null))
+				.withMessageContaining("Environment must not be null");
 	}
 
 	@Test
 	public void createWithJavascriptFlagWhenEnvironmentIsNullWillThrowException() {
-		this.thrown.expect(IllegalArgumentException.class);
-		this.thrown.expectMessage("Environment must not be null");
-		new LocalHostWebConnectionHtmlUnitDriver(null, true);
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new LocalHostWebConnectionHtmlUnitDriver(null, true))
+				.withMessageContaining("Environment must not be null");
 	}
 
 	@Test
 	public void createWithBrowserVersionWhenEnvironmentIsNullWillThrowException() {
-		this.thrown.expect(IllegalArgumentException.class);
-		this.thrown.expectMessage("Environment must not be null");
-		new LocalHostWebConnectionHtmlUnitDriver(null, BrowserVersion.CHROME);
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new LocalHostWebConnectionHtmlUnitDriver(null,
+						BrowserVersion.CHROME))
+				.withMessageContaining("Environment must not be null");
 	}
 
 	@Test
 	public void createWithCapabilitiesWhenEnvironmentIsNullWillThrowException() {
-		this.thrown.expect(IllegalArgumentException.class);
-		this.thrown.expectMessage("Environment must not be null");
 		Capabilities capabilities = mock(Capabilities.class);
 		given(capabilities.getBrowserName()).willReturn("htmlunit");
 		given(capabilities.getVersion()).willReturn("chrome");
-		new LocalHostWebConnectionHtmlUnitDriver(null, capabilities);
+		assertThatIllegalArgumentException().isThrownBy(
+				() -> new LocalHostWebConnectionHtmlUnitDriver(null, capabilities))
+				.withMessageContaining("Environment must not be null");
 	}
 
 	@Test

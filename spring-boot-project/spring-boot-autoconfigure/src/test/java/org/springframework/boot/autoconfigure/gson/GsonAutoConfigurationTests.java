@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,7 +16,6 @@
 
 package org.springframework.boot.autoconfigure.gson;
 
-import java.lang.reflect.Field;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -28,7 +27,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.LongSerializationPolicy;
 import org.joda.time.DateTime;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -81,11 +80,20 @@ public class GsonAutoConfigurationTests {
 	}
 
 	@Test
-	public void serializeNulls() {
+	public void serializeNullsTrue() {
 		this.contextRunner.withPropertyValues("spring.gson.serialize-nulls:true")
 				.run((context) -> {
 					Gson gson = context.getBean(Gson.class);
 					assertThat(gson.serializeNulls()).isTrue();
+				});
+	}
+
+	@Test
+	public void serializeNullsFalse() {
+		this.contextRunner.withPropertyValues("spring.gson.serialize-nulls:false")
+				.run((context) -> {
+					Gson gson = context.getBean(Gson.class);
+					assertThat(gson.serializeNulls()).isFalse();
 				});
 	}
 
@@ -180,15 +188,7 @@ public class GsonAutoConfigurationTests {
 	public void withoutLenient() {
 		this.contextRunner.run((context) -> {
 			Gson gson = context.getBean(Gson.class);
-			/*
-			 * It seems that lenient setting not work in version 2.8.2. We get access to
-			 * it via reflection
-			 */
-			Field lenientField = gson.getClass().getDeclaredField("lenient");
-			lenientField.setAccessible(true);
-			boolean lenient = lenientField.getBoolean(gson);
-
-			assertThat(lenient).isFalse();
+			assertThat(gson).hasFieldOrPropertyWithValue("lenient", false);
 		});
 	}
 
@@ -197,15 +197,7 @@ public class GsonAutoConfigurationTests {
 		this.contextRunner.withPropertyValues("spring.gson.lenient:true")
 				.run((context) -> {
 					Gson gson = context.getBean(Gson.class);
-					/*
-					 * It seems that lenient setting not work in version 2.8.2. We get
-					 * access to it via reflection
-					 */
-					Field lenientField = gson.getClass().getDeclaredField("lenient");
-					lenientField.setAccessible(true);
-					boolean lenient = lenientField.getBoolean(gson);
-
-					assertThat(lenient).isTrue();
+					assertThat(gson).hasFieldOrPropertyWithValue("lenient", true);
 				});
 	}
 
@@ -238,7 +230,7 @@ public class GsonAutoConfigurationTests {
 				});
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class GsonBuilderCustomizerConfig {
 
 		@Bean
@@ -259,7 +251,7 @@ public class GsonAutoConfigurationTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class GsonBuilderConfig {
 
 		@Bean

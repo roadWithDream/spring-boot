@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -53,7 +53,7 @@ import org.springframework.util.ResourceUtils;
 import org.springframework.util.StringUtils;
 
 /**
- * {@link LoggingSystem} for <a href="http://logback.qos.ch">logback</a>.
+ * {@link LoggingSystem} for <a href="https://logback.qos.ch">logback</a>.
  *
  * @author Phillip Webb
  * @author Dave Syer
@@ -198,7 +198,7 @@ public class LogbackLoggingSystem extends Slf4JLoggingSystem {
 		}
 		java.util.logging.Logger rootLogger = LogManager.getLogManager().getLogger("");
 		Handler[] handlers = rootLogger.getHandlers();
-		return handlers.length == 1 && SLF4JBridgeHandler.class.isInstance(handlers[0]);
+		return handlers.length == 1 && handlers[0] instanceof SLF4JBridgeHandler;
 	}
 
 	private void addLevelChangePropagator(LoggerContext loggerContext) {

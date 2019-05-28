@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,7 +18,7 @@ package org.springframework.boot.autoconfigure.info;
 
 import java.util.Properties;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoConfiguration;
@@ -72,6 +72,26 @@ public class ProjectInfoAutoConfigurationTests {
 	}
 
 	@Test
+	public void gitPropertiesUsesUtf8ByDefault() {
+		this.contextRunner.withPropertyValues(
+				"spring.info.git.location=classpath:/org/springframework/boot/autoconfigure/info/git.properties")
+				.run((context) -> {
+					GitProperties gitProperties = context.getBean(GitProperties.class);
+					assertThat(gitProperties.get("commit.charset")).isEqualTo("test™");
+				});
+	}
+
+	@Test
+	public void gitPropertiesEncodingCanBeConfigured() {
+		this.contextRunner.withPropertyValues("spring.info.git.encoding=US-ASCII",
+				"spring.info.git.location=classpath:/org/springframework/boot/autoconfigure/info/git.properties")
+				.run((context) -> {
+					GitProperties gitProperties = context.getBean(GitProperties.class);
+					assertThat(gitProperties.get("commit.charset")).isNotEqualTo("test™");
+				});
+	}
+
+	@Test
 	public void buildPropertiesDefaultLocation() {
 		this.contextRunner.run((context) -> {
 			BuildProperties buildProperties = context.getBean(BuildProperties.class);
@@ -120,7 +140,29 @@ public class ProjectInfoAutoConfigurationTests {
 				});
 	}
 
-	@Configuration
+	@Test
+	public void buildPropertiesUsesUtf8ByDefault() {
+		this.contextRunner.withPropertyValues(
+				"spring.info.build.location=classpath:/org/springframework/boot/autoconfigure/info/build-info.properties")
+				.run((context) -> {
+					BuildProperties buildProperties = context
+							.getBean(BuildProperties.class);
+					assertThat(buildProperties.get("charset")).isEqualTo("test™");
+				});
+	}
+
+	@Test
+	public void buildPropertiesEncodingCanBeConfigured() {
+		this.contextRunner.withPropertyValues("spring.info.build.encoding=US-ASCII",
+				"spring.info.build.location=classpath:/org/springframework/boot/autoconfigure/info/build-info.properties")
+				.run((context) -> {
+					BuildProperties buildProperties = context
+							.getBean(BuildProperties.class);
+					assertThat(buildProperties.get("charset")).isNotEqualTo("test™");
+				});
+	}
+
+	@Configuration(proxyBeanMethods = false)
 	static class CustomInfoPropertiesConfiguration {
 
 		@Bean

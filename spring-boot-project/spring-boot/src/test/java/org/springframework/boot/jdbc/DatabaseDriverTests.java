@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2017 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,11 +16,10 @@
 
 package org.springframework.boot.jdbc;
 
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
  * Tests for {@link DatabaseDriver}.
@@ -30,9 +29,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Stephane Nicoll
  */
 public class DatabaseDriverTests {
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
 
 	@Test
 	public void classNameForKnownDatabase() {
@@ -56,9 +52,9 @@ public class DatabaseDriverTests {
 
 	@Test
 	public void failureOnMalformedJdbcUrl() {
-		this.thrown.expect(IllegalArgumentException.class);
-		this.thrown.expectMessage("URL must start with");
-		DatabaseDriver.fromJdbcUrl("malformed:url");
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> DatabaseDriver.fromJdbcUrl("malformed:url"))
+				.withMessageContaining("URL must start with");
 	}
 
 	@Test
@@ -74,6 +70,7 @@ public class DatabaseDriverTests {
 		assertThat(DatabaseDriver.fromProductName("Apache Derby"))
 				.isEqualTo(DatabaseDriver.DERBY);
 		assertThat(DatabaseDriver.fromProductName("H2")).isEqualTo(DatabaseDriver.H2);
+		assertThat(DatabaseDriver.fromProductName("HDB")).isEqualTo(DatabaseDriver.HANA);
 		assertThat(DatabaseDriver.fromProductName("HSQL Database Engine"))
 				.isEqualTo(DatabaseDriver.HSQLDB);
 		assertThat(DatabaseDriver.fromProductName("SQLite"))
@@ -84,6 +81,8 @@ public class DatabaseDriverTests {
 				.isEqualTo(DatabaseDriver.ORACLE);
 		assertThat(DatabaseDriver.fromProductName("PostgreSQL"))
 				.isEqualTo(DatabaseDriver.POSTGRESQL);
+		assertThat(DatabaseDriver.fromProductName("Amazon Redshift"))
+				.isEqualTo(DatabaseDriver.REDSHIFT);
 		assertThat(DatabaseDriver.fromProductName("Microsoft SQL Server"))
 				.isEqualTo(DatabaseDriver.SQLSERVER);
 		assertThat(DatabaseDriver.fromProductName("SQL SERVER"))
@@ -123,12 +122,19 @@ public class DatabaseDriverTests {
 				.isEqualTo(DatabaseDriver.ORACLE);
 		assertThat(DatabaseDriver.fromJdbcUrl("jdbc:postgresql://127.0.0.1:5432/sample"))
 				.isEqualTo(DatabaseDriver.POSTGRESQL);
+		assertThat(DatabaseDriver.fromJdbcUrl(
+				"jdbc:redshift://examplecluster.abc123xyz789.us-west-2.redshift.amazonaws.com:5439/sample"))
+						.isEqualTo(DatabaseDriver.REDSHIFT);
 		assertThat(
 				DatabaseDriver.fromJdbcUrl("jdbc:jtds:sqlserver://127.0.0.1:1433/sample"))
 						.isEqualTo(DatabaseDriver.JTDS);
+		assertThat(DatabaseDriver.fromJdbcUrl("jdbc:sap:localhost"))
+				.isEqualTo(DatabaseDriver.HANA);
 		assertThat(DatabaseDriver.fromJdbcUrl("jdbc:sqlserver://127.0.0.1:1433"))
 				.isEqualTo(DatabaseDriver.SQLSERVER);
 		assertThat(DatabaseDriver.fromJdbcUrl("jdbc:firebirdsql://localhost/sample"))
+				.isEqualTo(DatabaseDriver.FIREBIRD);
+		assertThat(DatabaseDriver.fromJdbcUrl("jdbc:firebird://localhost/sample"))
 				.isEqualTo(DatabaseDriver.FIREBIRD);
 		assertThat(DatabaseDriver.fromJdbcUrl("jdbc:db2://localhost:50000/sample "))
 				.isEqualTo(DatabaseDriver.DB2);

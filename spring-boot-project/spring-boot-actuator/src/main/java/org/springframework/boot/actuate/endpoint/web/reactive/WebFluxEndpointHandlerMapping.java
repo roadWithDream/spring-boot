@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -38,6 +38,7 @@ import org.springframework.web.util.UriComponentsBuilder;
  *
  * @author Andy Wilkinson
  * @author Phillip Webb
+ * @author Brian Clozel
  * @since 2.0.0
  */
 public class WebFluxEndpointHandlerMapping extends AbstractWebFluxEndpointHandlerMapping
@@ -64,12 +65,31 @@ public class WebFluxEndpointHandlerMapping extends AbstractWebFluxEndpointHandle
 	}
 
 	@Override
-	@ResponseBody
-	protected Map<String, Map<String, Link>> links(ServerWebExchange exchange) {
-		String requestUri = UriComponentsBuilder.fromUri(exchange.getRequest().getURI())
-				.replaceQuery(null).toUriString();
-		return Collections.singletonMap("_links",
-				this.linksResolver.resolveLinks(requestUri));
+	protected LinksHandler getLinksHandler() {
+		return new WebFluxLinksHandler();
+	}
+
+	/**
+	 * Handler for root endpoint providing links.
+	 */
+	class WebFluxLinksHandler implements LinksHandler {
+
+		@Override
+		@ResponseBody
+		public Map<String, Map<String, Link>> links(ServerWebExchange exchange) {
+			String requestUri = UriComponentsBuilder
+					.fromUri(exchange.getRequest().getURI()).replaceQuery(null)
+					.toUriString();
+			return Collections.singletonMap("_links",
+					WebFluxEndpointHandlerMapping.this.linksResolver
+							.resolveLinks(requestUri));
+		}
+
+		@Override
+		public String toString() {
+			return "Actuator root web endpoint";
+		}
+
 	}
 
 }

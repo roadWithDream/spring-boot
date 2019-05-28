@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,10 +25,12 @@ import java.util.List;
 
 import reactor.netty.http.HttpProtocol;
 import reactor.netty.http.server.HttpServer;
+import reactor.netty.resources.LoopResources;
 
 import org.springframework.boot.web.reactive.server.AbstractReactiveWebServerFactory;
 import org.springframework.boot.web.reactive.server.ReactiveWebServerFactory;
 import org.springframework.boot.web.server.WebServer;
+import org.springframework.http.client.reactive.ReactorResourceFactory;
 import org.springframework.http.server.reactive.HttpHandler;
 import org.springframework.http.server.reactive.ReactorHttpHandlerAdapter;
 import org.springframework.util.Assert;
@@ -43,9 +45,13 @@ public class NettyReactiveWebServerFactory extends AbstractReactiveWebServerFact
 
 	private List<NettyServerCustomizer> serverCustomizers = new ArrayList<>();
 
+	private List<NettyRouteProvider> routeProviders = new ArrayList<>();
+
 	private Duration lifecycleTimeout;
 
 	private boolean useForwardHeaders;
+
+	private ReactorResourceFactory resourceFactory;
 
 	public NettyReactiveWebServerFactory() {
 	}
@@ -59,7 +65,10 @@ public class NettyReactiveWebServerFactory extends AbstractReactiveWebServerFact
 		HttpServer httpServer = createHttpServer();
 		ReactorHttpHandlerAdapter handlerAdapter = new ReactorHttpHandlerAdapter(
 				httpHandler);
-		return new NettyWebServer(httpServer, handlerAdapter, this.lifecycleTimeout);
+		NettyWebServer webServer = new NettyWebServer(httpServer, handlerAdapter,
+				this.lifecycleTimeout);
+		webServer.setRouteProviders(this.routeProviders);
+		return webServer;
 	}
 
 	/**
@@ -92,6 +101,16 @@ public class NettyReactiveWebServerFactory extends AbstractReactiveWebServerFact
 	}
 
 	/**
+	 * Add {@link NettyRouteProvider}s that should be applied, in order, before the the
+	 * handler for the Spring application.
+	 * @param routeProviders the route providers to add
+	 */
+	public void addRouteProviders(NettyRouteProvider... routeProviders) {
+		Assert.notNull(routeProviders, "NettyRouteProvider must not be null");
+		this.routeProviders.addAll(Arrays.asList(routeProviders));
+	}
+
+	/**
 	 * Set the maximum amount of time that should be waited when starting or stopping the
 	 * server.
 	 * @param lifecycleTimeout the lifecycle timeout
@@ -109,9 +128,28 @@ public class NettyReactiveWebServerFactory extends AbstractReactiveWebServerFact
 		this.useForwardHeaders = useForwardHeaders;
 	}
 
+	/**
+	 * Set the {@link ReactorResourceFactory} to get the shared resources from.
+	 * @param resourceFactory the server resources
+	 * @since 2.1.0
+	 */
+	public void setResourceFactory(ReactorResourceFactory resourceFactory) {
+		this.resourceFactory = resourceFactory;
+	}
+
 	private HttpServer createHttpServer() {
-		HttpServer server = HttpServer.create().tcpConfiguration(
-				(tcpServer) -> tcpServer.addressSupplier(this::getListenAddress));
+		HttpServer server = HttpServer.create();
+		if (this.resourceFactory != null) {
+			LoopResources resources = this.resourceFactory.getLoopResources();
+			Assert.notNull(resources,
+					"No LoopResources: is ReactorResourceFactory not initialized yet?");
+			server = server.tcpConfiguration((tcpServer) -> tcpServer.runOn(resources)
+					.addressSupplier(this::getListenAddress));
+		}
+		else {
+			server = server.tcpConfiguration(
+					(tcpServer) -> tcpServer.addressSupplier(this::getListenAddress));
+		}
 		if (getSsl() != null && getSsl().isEnabled()) {
 			SslServerCustomizer sslServerCustomizer = new SslServerCustomizer(getSsl(),
 					getHttp2(), getSslStoreProvider());
@@ -122,8 +160,7 @@ public class NettyReactiveWebServerFactory extends AbstractReactiveWebServerFact
 					getCompression());
 			server = compressionCustomizer.apply(server);
 		}
-		server = server.protocol(listProtocols());
-		server = (this.useForwardHeaders ? server.forwarded() : server.noForwarded());
+		server = server.protocol(listProtocols()).forwarded(this.useForwardHeaders);
 		return applyCustomizers(server);
 	}
 

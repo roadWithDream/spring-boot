@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -110,11 +110,16 @@ public class DataSourceHealthIndicator extends AbstractHealthIndicator
 		builder.up().withDetail("database", product);
 		String validationQuery = getValidationQuery(product);
 		if (StringUtils.hasText(validationQuery)) {
-			// Avoid calling getObject as it breaks MySQL on Java 7
-			List<Object> results = this.jdbcTemplate.query(validationQuery,
-					new SingleColumnRowMapper());
-			Object result = DataAccessUtils.requiredSingleResult(results);
-			builder.withDetail("hello", result);
+			try {
+				// Avoid calling getObject as it breaks MySQL on Java 7
+				List<Object> results = this.jdbcTemplate.query(validationQuery,
+						new SingleColumnRowMapper());
+				Object result = DataAccessUtils.requiredSingleResult(results);
+				builder.withDetail("result", result);
+			}
+			finally {
+				builder.withDetail("validationQuery", validationQuery);
+			}
 		}
 	}
 

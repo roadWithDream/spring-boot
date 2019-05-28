@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,6 +22,7 @@ import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
 
+import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.JsonPath;
 import org.assertj.core.api.AbstractAssert;
 import org.assertj.core.api.AbstractBooleanAssert;
@@ -45,11 +46,15 @@ import org.springframework.util.StringUtils;
  *
  * @author Phillip Webb
  * @author Andy Wilkinson
+ * @author Diego Berrueta
+ * @author Camille Vienot
  * @since 1.4.0
  */
 public class JsonContentAssert extends AbstractAssert<JsonContentAssert, CharSequence> {
 
 	private final JsonLoader loader;
+
+	private final Configuration configuration;
 
 	/**
 	 * Create a new {@link JsonContentAssert} instance that will load resources as UTF-8.
@@ -70,7 +75,21 @@ public class JsonContentAssert extends AbstractAssert<JsonContentAssert, CharSeq
 	 */
 	public JsonContentAssert(Class<?> resourceLoadClass, Charset charset,
 			CharSequence json) {
+		this(resourceLoadClass, charset, json, Configuration.defaultConfiguration());
+	}
+
+	/**
+	 * Create a new {@link JsonContentAssert} instance that will load resources in the
+	 * given {@code charset}.
+	 * @param resourceLoadClass the source class used to load resources
+	 * @param charset the charset of the JSON resources
+	 * @param json the actual JSON content
+	 * @param configuration the json-path configuration
+	 */
+	JsonContentAssert(Class<?> resourceLoadClass, Charset charset, CharSequence json,
+			Configuration configuration) {
 		super(json, JsonContentAssert.class);
+		this.configuration = configuration;
 		this.loader = new JsonLoader(resourceLoadClass, charset);
 	}
 
@@ -96,7 +115,8 @@ public class JsonContentAssert extends AbstractAssert<JsonContentAssert, CharSeq
 		if (expected instanceof Resource) {
 			return isEqualToJson((Resource) expected);
 		}
-		throw new AssertionError("Unsupport type for JSON assert " + expected.getClass());
+		failWithMessage("Unsupported type for JSON assert {}", expected.getClass());
+		return null;
 	}
 
 	/**
@@ -432,7 +452,8 @@ public class JsonContentAssert extends AbstractAssert<JsonContentAssert, CharSeq
 		if (expected instanceof Resource) {
 			return isNotEqualToJson((Resource) expected);
 		}
-		throw new AssertionError("Unsupport type for JSON assert " + expected.getClass());
+		failWithMessage("Unsupported type for JSON assert {}", expected.getClass());
+		return null;
 	}
 
 	/**
@@ -1031,14 +1052,14 @@ public class JsonContentAssert extends AbstractAssert<JsonContentAssert, CharSeq
 
 	private JsonContentAssert assertNotFailed(JSONCompareResult result) {
 		if (result.failed()) {
-			throw new AssertionError("JSON Comparison failure: " + result.getMessage());
+			failWithMessage("JSON Comparison failure: {}", result.getMessage());
 		}
 		return this;
 	}
 
 	private JsonContentAssert assertNotPassed(JSONCompareResult result) {
 		if (result.passed()) {
-			throw new AssertionError("JSON Comparison failure: " + result.getMessage());
+			failWithMessage("JSON Comparison failure: {}", result.getMessage());
 		}
 		return this;
 	}
@@ -1064,24 +1085,24 @@ public class JsonContentAssert extends AbstractAssert<JsonContentAssert, CharSeq
 			if (ObjectUtils.isEmpty(getValue(false)) || isIndefiniteAndEmpty()) {
 				return;
 			}
-			throw new AssertionError(getExpectedValueMessage("an empty value"));
+			failWithMessage(getExpectedValueMessage("an empty value"));
 		}
 
 		public void assertDoesNotHaveEmptyValue() {
 			if (!ObjectUtils.isEmpty(getValue(false))) {
 				return;
 			}
-			throw new AssertionError(getExpectedValueMessage("a non-empty value"));
+			failWithMessage(getExpectedValueMessage("a non-empty value"));
 
 		}
 
 		public void assertHasValue(Class<?> type, String expectedDescription) {
 			Object value = getValue(true);
 			if (value == null || isIndefiniteAndEmpty()) {
-				throw new AssertionError(getNoValueMessage());
+				failWithMessage(getNoValueMessage());
 			}
 			if (type != null && !type.isInstance(value)) {
-				throw new AssertionError(getExpectedValueMessage(expectedDescription));
+				failWithMessage(getExpectedValueMessage(expectedDescription));
 			}
 		}
 
@@ -1089,7 +1110,7 @@ public class JsonContentAssert extends AbstractAssert<JsonContentAssert, CharSeq
 			if (getValue(false) == null || isIndefiniteAndEmpty()) {
 				return;
 			}
-			throw new AssertionError(getExpectedValueMessage("no value"));
+			failWithMessage(getExpectedValueMessage("no value"));
 		}
 
 		private boolean isIndefiniteAndEmpty() {
@@ -1107,13 +1128,14 @@ public class JsonContentAssert extends AbstractAssert<JsonContentAssert, CharSeq
 		public Object getValue(boolean required) {
 			try {
 				CharSequence json = JsonContentAssert.this.actual;
-				return this.jsonPath.read((json != null) ? json.toString() : null);
+				return this.jsonPath.read((json != null) ? json.toString() : null,
+						JsonContentAssert.this.configuration);
 			}
 			catch (Exception ex) {
-				if (!required) {
-					return null;
+				if (required) {
+					failWithMessage("{}. {}", getNoValueMessage(), ex.getMessage());
 				}
-				throw new AssertionError(getNoValueMessage() + ". " + ex.getMessage());
+				return null;
 			}
 		}
 

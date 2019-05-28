@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,11 +31,13 @@ import org.springframework.beans.factory.support.BeanNameGenerator;
 import org.springframework.boot.Banner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
+import org.springframework.boot.convert.ApplicationConversionService;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
+import org.springframework.core.env.Environment;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.util.StringUtils;
 
@@ -371,6 +373,19 @@ public class SpringApplicationBuilder {
 	}
 
 	/**
+	 * Flag to indicate if the {@link ApplicationConversionService} should be added to the
+	 * application context's {@link Environment}.
+	 * @param addConversionService if the conversion service should be added.
+	 * @return the current builder
+	 * @since 2.1.0
+	 */
+	public SpringApplicationBuilder setAddConversionService(
+			boolean addConversionService) {
+		this.application.setAddConversionService(addConversionService);
+		return this;
+	}
+
+	/**
 	 * Default properties for the environment in the form {@code key=value} or
 	 * {@code key:value}.
 	 * @param defaultProperties the properties to set.
@@ -378,6 +393,17 @@ public class SpringApplicationBuilder {
 	 */
 	public SpringApplicationBuilder properties(String... defaultProperties) {
 		return properties(getMapFromKeyValuePairs(defaultProperties));
+	}
+
+	/**
+	 * Flag to control whether the application should be initialized lazily.
+	 * @param lazyInitialization the flag to set. Defaults to false.
+	 * @return the current builder
+	 * @since 2.2
+	 */
+	public SpringApplicationBuilder lazyInitialization(boolean lazyInitialization) {
+		this.application.setLazyInitialization(lazyInitialization);
+		return this;
 	}
 
 	private Map<String, Object> getMapFromKeyValuePairs(String[] properties) {

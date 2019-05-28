@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -100,6 +100,24 @@ public enum DatabaseDriver {
 			"SELECT 1"),
 
 	/**
+	 * Amazon Redshift.
+	 * @since 2.2.0
+	 */
+	REDSHIFT("Amazon Redshift", "com.amazon.redshift.jdbc.Driver", null, "SELECT 1"),
+
+	/**
+	 * HANA - SAP HANA Database - HDB.
+	 * @since 2.1.0
+	 */
+	HANA("HDB", "com.sap.db.jdbc.Driver", "com.sap.db.jdbcext.XADataSourceSAP",
+			"SELECT 1 FROM SYS.DUMMY") {
+		@Override
+		protected Collection<String> getUrlPrefixes() {
+			return Collections.singleton("sap");
+		}
+	},
+
+	/**
 	 * jTDS. As it can be used for several databases, there isn't a single product name we
 	 * could rely on.
 	 */
@@ -128,7 +146,7 @@ public enum DatabaseDriver {
 
 		@Override
 		protected Collection<String> getUrlPrefixes() {
-			return Collections.singleton("firebirdsql");
+			return Arrays.asList("firebirdsql", "firebird");
 		}
 
 		@Override

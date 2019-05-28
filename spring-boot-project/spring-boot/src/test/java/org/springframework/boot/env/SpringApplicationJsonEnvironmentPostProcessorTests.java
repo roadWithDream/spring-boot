@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,9 +16,7 @@
 
 package org.springframework.boot.env;
 
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
 import org.springframework.boot.json.JsonParseException;
 import org.springframework.boot.origin.PropertySourceOrigin;
@@ -28,6 +26,7 @@ import org.springframework.core.env.StandardEnvironment;
 import org.springframework.test.context.support.TestPropertySourceUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 /**
  * Tests for {@link SpringApplicationJsonEnvironmentPostProcessor}.
@@ -39,22 +38,18 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 public class SpringApplicationJsonEnvironmentPostProcessorTests {
 
-	@Rule
-	public ExpectedException expected = ExpectedException.none();
-
 	private SpringApplicationJsonEnvironmentPostProcessor processor = new SpringApplicationJsonEnvironmentPostProcessor();
 
 	private ConfigurableEnvironment environment = new StandardEnvironment();
 
 	@Test
 	public void error() {
-		this.expected.expect(JsonParseException.class);
-		this.expected.expectMessage("Cannot parse JSON");
 		assertThat(this.environment.resolvePlaceholders("${foo:}")).isEmpty();
 		TestPropertySourceUtils.addInlinedPropertiesToEnvironment(this.environment,
 				"spring.application.json=foo:bar");
-		this.processor.postProcessEnvironment(this.environment, null);
-		assertThat(this.environment.resolvePlaceholders("${foo:}")).isEmpty();
+		assertThatExceptionOfType(JsonParseException.class).isThrownBy(
+				() -> this.processor.postProcessEnvironment(this.environment, null))
+				.withMessageContaining("Cannot parse JSON");
 	}
 
 	@Test

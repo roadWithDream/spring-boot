@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,6 +23,7 @@ import java.util.stream.Stream;
 
 import org.reactivestreams.Publisher;
 
+import org.springframework.boot.actuate.endpoint.EndpointId;
 import org.springframework.boot.actuate.endpoint.annotation.AbstractDiscoveredOperation;
 import org.springframework.boot.actuate.endpoint.annotation.DiscoveredOperationMethod;
 import org.springframework.boot.actuate.endpoint.annotation.Selector;
@@ -51,8 +52,9 @@ class DiscoveredWebOperation extends AbstractDiscoveredOperation implements WebO
 
 	private final WebOperationRequestPredicate requestPredicate;
 
-	DiscoveredWebOperation(String endpointId, DiscoveredOperationMethod operationMethod,
-			OperationInvoker invoker, WebOperationRequestPredicate requestPredicate) {
+	DiscoveredWebOperation(EndpointId endpointId,
+			DiscoveredOperationMethod operationMethod, OperationInvoker invoker,
+			WebOperationRequestPredicate requestPredicate) {
 		super(operationMethod, invoker);
 		Method method = operationMethod.getMethod();
 		this.id = getId(endpointId, method);
@@ -60,7 +62,7 @@ class DiscoveredWebOperation extends AbstractDiscoveredOperation implements WebO
 		this.requestPredicate = requestPredicate;
 	}
 
-	private String getId(String endpointId, Method method) {
+	private String getId(EndpointId endpointId, Method method) {
 		return endpointId + Stream.of(method.getParameters()).filter(this::hasSelector)
 				.map(this::dashName).collect(Collectors.joining());
 	}

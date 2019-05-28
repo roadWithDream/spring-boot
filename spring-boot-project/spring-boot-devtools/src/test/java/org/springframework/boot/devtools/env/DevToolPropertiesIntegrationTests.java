@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,12 +18,12 @@ package org.springframework.boot.devtools.env;
 
 import java.net.URL;
 import java.util.Collections;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.boot.SpringApplication;
@@ -38,6 +38,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.ConfigurableEnvironment;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 /**
  * Integration tests for the configuration of development-time properties
@@ -45,9 +46,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Andy Wilkinson
  */
 public class DevToolPropertiesIntegrationTests {
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
 
 	private ConfigurableApplicationContext context;
 
@@ -65,37 +63,40 @@ public class DevToolPropertiesIntegrationTests {
 	}
 
 	@Test
-	public void classPropertyConditionIsAffectedByDevToolProperties() {
+	public void classPropertyConditionIsAffectedByDevToolProperties() throws Exception {
 		SpringApplication application = new SpringApplication(
 				ClassConditionConfiguration.class);
 		application.setWebApplicationType(WebApplicationType.NONE);
-		this.context = application.run();
+		this.context = getContext(application::run);
 		this.context.getBean(ClassConditionConfiguration.class);
 	}
 
 	@Test
-	public void beanMethodPropertyConditionIsAffectedByDevToolProperties() {
+	public void beanMethodPropertyConditionIsAffectedByDevToolProperties()
+			throws Exception {
 		SpringApplication application = new SpringApplication(
 				BeanConditionConfiguration.class);
 		application.setWebApplicationType(WebApplicationType.NONE);
-		this.context = application.run();
+		this.context = getContext(application::run);
 		this.context.getBean(MyBean.class);
 	}
 
 	@Test
-	public void postProcessWhenRestarterDisabledAndRemoteSecretNotSetShouldNotAddPropertySource() {
+	public void postProcessWhenRestarterDisabledAndRemoteSecretNotSetShouldNotAddPropertySource()
+			throws Exception {
 		Restarter.clearInstance();
 		Restarter.disable();
 		SpringApplication application = new SpringApplication(
 				BeanConditionConfiguration.class);
 		application.setWebApplicationType(WebApplicationType.NONE);
-		this.context = application.run();
-		this.thrown.expect(NoSuchBeanDefinitionException.class);
-		this.context.getBean(MyBean.class);
+		this.context = getContext(application::run);
+		assertThatExceptionOfType(NoSuchBeanDefinitionException.class)
+				.isThrownBy(() -> this.context.getBean(MyBean.class));
 	}
 
 	@Test
-	public void postProcessWhenRestarterDisabledAndRemoteSecretSetShouldAddPropertySource() {
+	public void postProcessWhenRestarterDisabledAndRemoteSecretSetShouldAddPropertySource()
+			throws Exception {
 		Restarter.clearInstance();
 		Restarter.disable();
 		SpringApplication application = new SpringApplication(
@@ -103,33 +104,45 @@ public class DevToolPropertiesIntegrationTests {
 		application.setWebApplicationType(WebApplicationType.NONE);
 		application.setDefaultProperties(
 				Collections.singletonMap("spring.devtools.remote.secret", "donttell"));
-		this.context = application.run();
+		this.context = getContext(application::run);
 		this.context.getBean(MyBean.class);
 	}
 
 	@Test
-	public void postProcessEnablesIncludeStackTraceProperty() {
+	public void postProcessEnablesIncludeStackTraceProperty() throws Exception {
 		SpringApplication application = new SpringApplication(TestConfiguration.class);
 		application.setWebApplicationType(WebApplicationType.NONE);
-		this.context = application.run();
+		this.context = getContext(application::run);
 		ConfigurableEnvironment environment = this.context.getEnvironment();
 		String property = environment.getProperty("server.error.include-stacktrace");
 		assertThat(property)
 				.isEqualTo(ErrorProperties.IncludeStacktrace.ALWAYS.toString());
 	}
 
-	@Configuration
+	protected ConfigurableApplicationContext getContext(
+			Supplier<ConfigurableApplicationContext> supplier) throws Exception {
+		AtomicReference<ConfigurableApplicationContext> atomicReference = new AtomicReference<>();
+		Thread thread = new Thread(() -> {
+			ConfigurableApplicationContext context = supplier.get();
+			atomicReference.getAndSet(context);
+		});
+		thread.start();
+		thread.join();
+		return atomicReference.get();
+	}
+
+	@Configuration(proxyBeanMethods = false)
 	static class TestConfiguration {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@ConditionalOnProperty("spring.h2.console.enabled")
 	static class ClassConditionConfiguration {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class BeanConditionConfiguration {
 
 		@Bean

@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -47,7 +47,7 @@ import org.springframework.util.Assert;
  * @author Phillip Webb
  * @author Andy Wilkinson
  */
-class BindConverter {
+final class BindConverter {
 
 	private static final Set<Class<?>> EXCLUDED_EDITORS;
 	static {
@@ -56,9 +56,11 @@ class BindConverter {
 		EXCLUDED_EDITORS = Collections.unmodifiableSet(excluded);
 	}
 
+	private static BindConverter sharedInstance;
+
 	private final ConversionService conversionService;
 
-	BindConverter(ConversionService conversionService,
+	private BindConverter(ConversionService conversionService,
 			Consumer<PropertyEditorRegistry> propertyEditorInitializer) {
 		Assert.notNull(conversionService, "ConversionService must not be null");
 		List<ConversionService> conversionServices = getConversionServices(
@@ -95,6 +97,19 @@ class BindConverter {
 		}
 		return (T) this.conversionService.convert(value, TypeDescriptor.forObject(value),
 				new ResolvableTypeDescriptor(type, annotations));
+	}
+
+	static BindConverter get(ConversionService conversionService,
+			Consumer<PropertyEditorRegistry> propertyEditorInitializer) {
+		if (conversionService == ApplicationConversionService.getSharedInstance()
+				&& propertyEditorInitializer == null) {
+			if (sharedInstance == null) {
+				sharedInstance = new BindConverter(conversionService,
+						propertyEditorInitializer);
+			}
+			return sharedInstance;
+		}
+		return new BindConverter(conversionService, propertyEditorInitializer);
 	}
 
 	/**
@@ -227,12 +242,12 @@ class BindConverter {
 		}
 
 		private PropertyEditor getPropertyEditor(Class<?> type) {
-			SimpleTypeConverter typeConverter = this.typeConverter;
 			if (type == null || type == Object.class
 					|| Collection.class.isAssignableFrom(type)
 					|| Map.class.isAssignableFrom(type)) {
 				return null;
 			}
+			SimpleTypeConverter typeConverter = this.typeConverter;
 			PropertyEditor editor = typeConverter.getDefaultEditor(type);
 			if (editor == null) {
 				editor = typeConverter.findCustomEditor(type, null);

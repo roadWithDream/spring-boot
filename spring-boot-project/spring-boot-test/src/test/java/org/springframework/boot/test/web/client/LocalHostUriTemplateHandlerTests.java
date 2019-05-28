@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,14 +20,13 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.mock.env.MockEnvironment;
 import org.springframework.web.util.UriTemplateHandler;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -41,28 +40,26 @@ import static org.mockito.Mockito.verify;
  */
 public class LocalHostUriTemplateHandlerTests {
 
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-
 	@Test
 	public void createWhenEnvironmentIsNullShouldThrowException() {
-		this.thrown.expect(IllegalArgumentException.class);
-		this.thrown.expectMessage("Environment must not be null");
-		new LocalHostUriTemplateHandler(null);
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new LocalHostUriTemplateHandler(null))
+				.withMessageContaining("Environment must not be null");
 	}
 
 	@Test
 	public void createWhenSchemeIsNullShouldThrowException() {
-		this.thrown.expect(IllegalArgumentException.class);
-		this.thrown.expectMessage("Scheme must not be null");
-		new LocalHostUriTemplateHandler(new MockEnvironment(), null);
+		assertThatIllegalArgumentException().isThrownBy(
+				() -> new LocalHostUriTemplateHandler(new MockEnvironment(), null))
+				.withMessageContaining("Scheme must not be null");
 	}
 
 	@Test
 	public void createWhenHandlerIsNullShouldThrowException() {
-		this.thrown.expect(IllegalArgumentException.class);
-		this.thrown.expectMessage("Handler must not be null");
-		new LocalHostUriTemplateHandler(new MockEnvironment(), "http", null);
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new LocalHostUriTemplateHandler(new MockEnvironment(),
+						"http", null))
+				.withMessageContaining("Handler must not be null");
 	}
 
 	@Test
@@ -104,7 +101,7 @@ public class LocalHostUriTemplateHandlerTests {
 		MockEnvironment environment = new MockEnvironment();
 		UriTemplateHandler uriTemplateHandler = mock(UriTemplateHandler.class);
 		Map<String, ?> uriVariables = new HashMap<>();
-		URI uri = URI.create("http://www.example.com");
+		URI uri = URI.create("https://www.example.com");
 		given(uriTemplateHandler.expand("https://localhost:8080/", uriVariables))
 				.willReturn(uri);
 		LocalHostUriTemplateHandler handler = new LocalHostUriTemplateHandler(environment,

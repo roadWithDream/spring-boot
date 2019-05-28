@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,6 +21,8 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import org.apache.catalina.Container;
 import org.apache.catalina.core.StandardWrapper;
@@ -28,7 +30,6 @@ import org.apache.jasper.EmbeddedServletOptions;
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 import org.thymeleaf.spring5.templateresolver.SpringResourceTemplateResolver;
 
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
@@ -56,6 +57,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -72,9 +74,6 @@ import static org.mockito.Mockito.verify;
 public class LocalDevToolsAutoConfigurationTests {
 
 	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-
-	@Rule
 	public MockRestarter mockRestarter = new MockRestarter();
 
 	private ConfigurableApplicationContext context;
@@ -87,28 +86,29 @@ public class LocalDevToolsAutoConfigurationTests {
 	}
 
 	@Test
-	public void thymeleafCacheIsFalse() {
-		this.context = initializeAndRun(Config.class);
+	public void thymeleafCacheIsFalse() throws Exception {
+		this.context = getContext(() -> initializeAndRun(Config.class));
 		SpringResourceTemplateResolver resolver = this.context
 				.getBean(SpringResourceTemplateResolver.class);
 		assertThat(resolver.isCacheable()).isFalse();
 	}
 
 	@Test
-	public void defaultPropertyCanBeOverriddenFromCommandLine() {
-		this.context = initializeAndRun(Config.class, "--spring.thymeleaf.cache=true");
+	public void defaultPropertyCanBeOverriddenFromCommandLine() throws Exception {
+		this.context = getContext(
+				() -> initializeAndRun(Config.class, "--spring.thymeleaf.cache=true"));
 		SpringResourceTemplateResolver resolver = this.context
 				.getBean(SpringResourceTemplateResolver.class);
 		assertThat(resolver.isCacheable()).isTrue();
 	}
 
 	@Test
-	public void defaultPropertyCanBeOverriddenFromUserHomeProperties() {
+	public void defaultPropertyCanBeOverriddenFromUserHomeProperties() throws Exception {
 		String userHome = System.getProperty("user.home");
 		System.setProperty("user.home",
 				new File("src/test/resources/user-home").getAbsolutePath());
 		try {
-			this.context = initializeAndRun(Config.class);
+			this.context = getContext(() -> initializeAndRun(Config.class));
 			SpringResourceTemplateResolver resolver = this.context
 					.getBean(SpringResourceTemplateResolver.class);
 			assertThat(resolver.isCacheable()).isTrue();
@@ -119,22 +119,22 @@ public class LocalDevToolsAutoConfigurationTests {
 	}
 
 	@Test
-	public void resourceCachePeriodIsZero() {
-		this.context = initializeAndRun(WebResourcesConfig.class);
+	public void resourceCachePeriodIsZero() throws Exception {
+		this.context = getContext(() -> initializeAndRun(WebResourcesConfig.class));
 		ResourceProperties properties = this.context.getBean(ResourceProperties.class);
 		assertThat(properties.getCache().getPeriod()).isEqualTo(Duration.ZERO);
 	}
 
 	@Test
-	public void liveReloadServer() {
-		this.context = initializeAndRun(Config.class);
+	public void liveReloadServer() throws Exception {
+		this.context = getContext(() -> initializeAndRun(Config.class));
 		LiveReloadServer server = this.context.getBean(LiveReloadServer.class);
 		assertThat(server.isStarted()).isTrue();
 	}
 
 	@Test
-	public void liveReloadTriggeredOnContextRefresh() {
-		this.context = initializeAndRun(ConfigWithMockLiveReload.class);
+	public void liveReloadTriggeredOnContextRefresh() throws Exception {
+		this.context = getContext(() -> initializeAndRun(ConfigWithMockLiveReload.class));
 		LiveReloadServer server = this.context.getBean(LiveReloadServer.class);
 		reset(server);
 		this.context.publishEvent(new ContextRefreshedEvent(this.context));
@@ -142,8 +142,8 @@ public class LocalDevToolsAutoConfigurationTests {
 	}
 
 	@Test
-	public void liveReloadTriggeredOnClassPathChangeWithoutRestart() {
-		this.context = initializeAndRun(ConfigWithMockLiveReload.class);
+	public void liveReloadTriggeredOnClassPathChangeWithoutRestart() throws Exception {
+		this.context = getContext(() -> initializeAndRun(ConfigWithMockLiveReload.class));
 		LiveReloadServer server = this.context.getBean(LiveReloadServer.class);
 		reset(server);
 		ClassPathChangedEvent event = new ClassPathChangedEvent(this.context,
@@ -153,8 +153,8 @@ public class LocalDevToolsAutoConfigurationTests {
 	}
 
 	@Test
-	public void liveReloadNotTriggeredOnClassPathChangeWithRestart() {
-		this.context = initializeAndRun(ConfigWithMockLiveReload.class);
+	public void liveReloadNotTriggeredOnClassPathChangeWithRestart() throws Exception {
+		this.context = getContext(() -> initializeAndRun(ConfigWithMockLiveReload.class));
 		LiveReloadServer server = this.context.getBean(LiveReloadServer.class);
 		reset(server);
 		ClassPathChangedEvent event = new ClassPathChangedEvent(this.context,
@@ -164,17 +164,17 @@ public class LocalDevToolsAutoConfigurationTests {
 	}
 
 	@Test
-	public void liveReloadDisabled() {
+	public void liveReloadDisabled() throws Exception {
 		Map<String, Object> properties = new HashMap<>();
 		properties.put("spring.devtools.livereload.enabled", false);
-		this.context = initializeAndRun(Config.class, properties);
-		this.thrown.expect(NoSuchBeanDefinitionException.class);
-		this.context.getBean(OptionalLiveReloadServer.class);
+		this.context = getContext(() -> initializeAndRun(Config.class, properties));
+		assertThatExceptionOfType(NoSuchBeanDefinitionException.class)
+				.isThrownBy(() -> this.context.getBean(OptionalLiveReloadServer.class));
 	}
 
 	@Test
-	public void restartTriggeredOnClassPathChangeWithRestart() {
-		this.context = initializeAndRun(Config.class);
+	public void restartTriggeredOnClassPathChangeWithRestart() throws Exception {
+		this.context = getContext(() -> initializeAndRun(Config.class));
 		ClassPathChangedEvent event = new ClassPathChangedEvent(this.context,
 				Collections.emptySet(), true);
 		this.context.publishEvent(event);
@@ -182,8 +182,8 @@ public class LocalDevToolsAutoConfigurationTests {
 	}
 
 	@Test
-	public void restartNotTriggeredOnClassPathChangeWithRestart() {
-		this.context = initializeAndRun(Config.class);
+	public void restartNotTriggeredOnClassPathChangeWithRestart() throws Exception {
+		this.context = getContext(() -> initializeAndRun(Config.class));
 		ClassPathChangedEvent event = new ClassPathChangedEvent(this.context,
 				Collections.emptySet(), false);
 		this.context.publishEvent(event);
@@ -191,27 +191,27 @@ public class LocalDevToolsAutoConfigurationTests {
 	}
 
 	@Test
-	public void restartWatchingClassPath() {
-		this.context = initializeAndRun(Config.class);
+	public void restartWatchingClassPath() throws Exception {
+		this.context = getContext(() -> initializeAndRun(Config.class));
 		ClassPathFileSystemWatcher watcher = this.context
 				.getBean(ClassPathFileSystemWatcher.class);
 		assertThat(watcher).isNotNull();
 	}
 
 	@Test
-	public void restartDisabled() {
+	public void restartDisabled() throws Exception {
 		Map<String, Object> properties = new HashMap<>();
 		properties.put("spring.devtools.restart.enabled", false);
-		this.context = initializeAndRun(Config.class, properties);
-		this.thrown.expect(NoSuchBeanDefinitionException.class);
-		this.context.getBean(ClassPathFileSystemWatcher.class);
+		this.context = getContext(() -> initializeAndRun(Config.class, properties));
+		assertThatExceptionOfType(NoSuchBeanDefinitionException.class)
+				.isThrownBy(() -> this.context.getBean(ClassPathFileSystemWatcher.class));
 	}
 
 	@Test
-	public void restartWithTriggerFile() {
+	public void restartWithTriggerFile() throws Exception {
 		Map<String, Object> properties = new HashMap<>();
 		properties.put("spring.devtools.restart.trigger-file", "somefile.txt");
-		this.context = initializeAndRun(Config.class, properties);
+		this.context = getContext(() -> initializeAndRun(Config.class, properties));
 		ClassPathFileSystemWatcher classPathWatcher = this.context
 				.getBean(ClassPathFileSystemWatcher.class);
 		Object watcher = ReflectionTestUtils.getField(classPathWatcher,
@@ -221,11 +221,11 @@ public class LocalDevToolsAutoConfigurationTests {
 	}
 
 	@Test
-	public void watchingAdditionalPaths() {
+	public void watchingAdditionalPaths() throws Exception {
 		Map<String, Object> properties = new HashMap<>();
 		properties.put("spring.devtools.restart.additional-paths",
 				"src/main/java,src/test/java");
-		this.context = initializeAndRun(Config.class, properties);
+		this.context = getContext(() -> initializeAndRun(Config.class, properties));
 		ClassPathFileSystemWatcher classPathWatcher = this.context
 				.getBean(ClassPathFileSystemWatcher.class);
 		Object watcher = ReflectionTestUtils.getField(classPathWatcher,
@@ -239,8 +239,8 @@ public class LocalDevToolsAutoConfigurationTests {
 	}
 
 	@Test
-	public void devToolsSwitchesJspServletToDevelopmentMode() {
-		this.context = initializeAndRun(Config.class);
+	public void devToolsSwitchesJspServletToDevelopmentMode() throws Exception {
+		this.context = getContext(() -> initializeAndRun(Config.class));
 		TomcatWebServer tomcatContainer = (TomcatWebServer) ((ServletWebServerApplicationContext) this.context)
 				.getWebServer();
 		Container context = tomcatContainer.getTomcat().getHost().findChildren()[0];
@@ -248,6 +248,18 @@ public class LocalDevToolsAutoConfigurationTests {
 		EmbeddedServletOptions options = (EmbeddedServletOptions) ReflectionTestUtils
 				.getField(jspServletWrapper.getServlet(), "options");
 		assertThat(options.getDevelopment()).isTrue();
+	}
+
+	private ConfigurableApplicationContext getContext(
+			Supplier<ConfigurableApplicationContext> supplier) throws Exception {
+		AtomicReference<ConfigurableApplicationContext> atomicReference = new AtomicReference<>();
+		Thread thread = new Thread(() -> {
+			ConfigurableApplicationContext context = supplier.get();
+			atomicReference.getAndSet(context);
+		});
+		thread.start();
+		thread.join();
+		return atomicReference.get();
 	}
 
 	private ConfigurableApplicationContext initializeAndRun(Class<?> config,
@@ -274,14 +286,14 @@ public class LocalDevToolsAutoConfigurationTests {
 		return properties;
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@Import({ ServletWebServerFactoryAutoConfiguration.class,
 			LocalDevToolsAutoConfiguration.class, ThymeleafAutoConfiguration.class })
 	public static class Config {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@ImportAutoConfiguration({ ServletWebServerFactoryAutoConfiguration.class,
 			LocalDevToolsAutoConfiguration.class, ThymeleafAutoConfiguration.class })
 	public static class ConfigWithMockLiveReload {
@@ -293,14 +305,14 @@ public class LocalDevToolsAutoConfigurationTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@Import({ ServletWebServerFactoryAutoConfiguration.class,
 			LocalDevToolsAutoConfiguration.class, ResourceProperties.class })
 	public static class WebResourcesConfig {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	public static class SessionRedisTemplateConfig {
 
 		@Bean

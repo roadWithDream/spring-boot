@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,11 +20,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
  * Tests for {@link EndpointMediaTypes}.
@@ -33,21 +32,18 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 public class EndpointMediaTypesTests {
 
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-
 	@Test
 	public void createWhenProducedIsNullShouldThrowException() {
-		this.thrown.expect(IllegalArgumentException.class);
-		this.thrown.expectMessage("Produced must not be null");
-		new EndpointMediaTypes(null, Collections.emptyList());
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new EndpointMediaTypes(null, Collections.emptyList()))
+				.withMessageContaining("Produced must not be null");
 	}
 
 	@Test
 	public void createWhenConsumedIsNullShouldThrowException() {
-		this.thrown.expect(IllegalArgumentException.class);
-		this.thrown.expectMessage("Consumed must not be null");
-		new EndpointMediaTypes(Collections.emptyList(), null);
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new EndpointMediaTypes(Collections.emptyList(), null))
+				.withMessageContaining("Consumed must not be null");
 	}
 
 	@Test

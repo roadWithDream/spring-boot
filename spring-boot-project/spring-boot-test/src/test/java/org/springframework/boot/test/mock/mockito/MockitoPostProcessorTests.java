@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,9 +16,7 @@
 
 package org.springframework.boot.test.mock.mockito;
 
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import org.springframework.beans.factory.FactoryBean;
@@ -33,6 +31,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 /**
  * Test for {@link MockitoPostProcessor}. See also the integration tests.
@@ -43,20 +42,16 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 public class MockitoPostProcessorTests {
 
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-
 	@Test
 	public void cannotMockMultipleBeans() {
 		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
 		MockitoPostProcessor.register(context);
 		context.register(MultipleBeans.class);
-		this.thrown.expect(IllegalStateException.class);
-		this.thrown.expectMessage(
-				"Unable to register mock bean " + ExampleService.class.getName()
-						+ " expected a single matching bean to replace "
-						+ "but found [example1, example2]");
-		context.refresh();
+		assertThatIllegalStateException().isThrownBy(context::refresh)
+				.withMessageContaining(
+						"Unable to register mock bean " + ExampleService.class.getName()
+								+ " expected a single matching bean to replace "
+								+ "but found [example1, example2]");
 	}
 
 	@Test
@@ -64,12 +59,11 @@ public class MockitoPostProcessorTests {
 		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
 		MockitoPostProcessor.register(context);
 		context.register(MultipleQualifiedBeans.class);
-		this.thrown.expect(IllegalStateException.class);
-		this.thrown.expectMessage(
-				"Unable to register mock bean " + ExampleService.class.getName()
-						+ " expected a single matching bean to replace "
-						+ "but found [example1, example3]");
-		context.refresh();
+		assertThatIllegalStateException().isThrownBy(context::refresh)
+				.withMessageContaining(
+						"Unable to register mock bean " + ExampleService.class.getName()
+								+ " expected a single matching bean to replace "
+								+ "but found [example1, example3]");
 	}
 
 	@Test
@@ -160,7 +154,7 @@ public class MockitoPostProcessorTests {
 				.isSpy()).isTrue();
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@MockBean(SomeInterface.class)
 	static class MockedFactoryBean {
 
@@ -171,7 +165,7 @@ public class MockitoPostProcessorTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@MockBean(ExampleService.class)
 	static class MultipleBeans {
 
@@ -187,10 +181,10 @@ public class MockitoPostProcessorTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class MultipleQualifiedBeans {
 
-		@MockBean(ExampleService.class)
+		@MockBean
 		@Qualifier("test")
 		private ExampleService mock;
 
@@ -213,10 +207,10 @@ public class MockitoPostProcessorTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class MockPrimaryBean {
 
-		@MockBean(ExampleService.class)
+		@MockBean
 		private ExampleService mock;
 
 		@Bean
@@ -233,10 +227,10 @@ public class MockitoPostProcessorTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class MockQualifiedBean {
 
-		@MockBean(ExampleService.class)
+		@MockBean
 		@Qualifier("test")
 		private ExampleService mock;
 
@@ -254,10 +248,10 @@ public class MockitoPostProcessorTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class SpyPrimaryBean {
 
-		@SpyBean(ExampleService.class)
+		@SpyBean
 		private ExampleService spy;
 
 		@Bean
@@ -274,10 +268,10 @@ public class MockitoPostProcessorTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class SpyQualifiedBean {
 
-		@SpyBean(ExampleService.class)
+		@SpyBean
 		@Qualifier("test")
 		private ExampleService spy;
 

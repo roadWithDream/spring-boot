@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,18 +16,18 @@
 
 package org.springframework.boot.actuate.autoconfigure.endpoint;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.MockitoAnnotations;
 
 import org.springframework.boot.actuate.endpoint.EndpointFilter;
+import org.springframework.boot.actuate.endpoint.EndpointId;
 import org.springframework.boot.actuate.endpoint.ExposableEndpoint;
 import org.springframework.boot.actuate.endpoint.web.ExposableWebEndpoint;
 import org.springframework.mock.env.MockEnvironment;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
@@ -38,86 +38,85 @@ import static org.mockito.Mockito.mock;
  */
 public class ExposeExcludePropertyEndpointFilterTests {
 
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-
 	private ExposeExcludePropertyEndpointFilter<?> filter;
 
-	@Before
+	@BeforeEach
 	public void setup() {
 		MockitoAnnotations.initMocks(this);
 	}
 
 	@Test
 	public void createWhenEndpointTypeIsNullShouldThrowException() {
-		this.thrown.expect(IllegalArgumentException.class);
-		this.thrown.expectMessage("EndpointType must not be null");
-		new ExposeExcludePropertyEndpointFilter<>(null, new MockEnvironment(), "foo");
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new ExposeExcludePropertyEndpointFilter<>(null,
+						new MockEnvironment(), "foo"))
+				.withMessageContaining("EndpointType must not be null");
 	}
 
 	@Test
 	public void createWhenEnvironmentIsNullShouldThrowException() {
-		this.thrown.expect(IllegalArgumentException.class);
-		this.thrown.expectMessage("Environment must not be null");
-		new ExposeExcludePropertyEndpointFilter<>(ExposableEndpoint.class, null, "foo");
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new ExposeExcludePropertyEndpointFilter<>(
+						ExposableEndpoint.class, null, "foo"))
+				.withMessageContaining("Environment must not be null");
 	}
 
 	@Test
 	public void createWhenPrefixIsNullShouldThrowException() {
-		this.thrown.expect(IllegalArgumentException.class);
-		this.thrown.expectMessage("Prefix must not be empty");
-		new ExposeExcludePropertyEndpointFilter<>(ExposableEndpoint.class,
-				new MockEnvironment(), null);
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new ExposeExcludePropertyEndpointFilter<>(
+						ExposableEndpoint.class, new MockEnvironment(), null))
+				.withMessageContaining("Prefix must not be empty");
 	}
 
 	@Test
 	public void createWhenPrefixIsEmptyShouldThrowException() {
-		this.thrown.expect(IllegalArgumentException.class);
-		this.thrown.expectMessage("Prefix must not be empty");
-		new ExposeExcludePropertyEndpointFilter<>(ExposableEndpoint.class,
-				new MockEnvironment(), "");
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new ExposeExcludePropertyEndpointFilter<>(
+						ExposableEndpoint.class, new MockEnvironment(), ""))
+				.withMessageContaining("Prefix must not be empty");
 	}
 
 	@Test
 	public void matchWhenExposeIsEmptyAndExcludeIsEmptyAndInDefaultShouldMatch() {
 		setupFilter("", "");
-		assertThat(match("def")).isTrue();
+		assertThat(match(EndpointId.of("def"))).isTrue();
 	}
 
 	@Test
 	public void matchWhenExposeIsEmptyAndExcludeIsEmptyAndNotInDefaultShouldNotMatch() {
 		setupFilter("", "");
-		assertThat(match("bar")).isFalse();
+		assertThat(match(EndpointId.of("bar"))).isFalse();
 	}
 
 	@Test
 	public void matchWhenExposeMatchesAndExcludeIsEmptyShouldMatch() {
 		setupFilter("bar", "");
-		assertThat(match("bar")).isTrue();
+		assertThat(match(EndpointId.of("bar"))).isTrue();
 	}
 
 	@Test
 	public void matchWhenExposeDoesNotMatchAndExcludeIsEmptyShouldNotMatch() {
 		setupFilter("bar", "");
-		assertThat(match("baz")).isFalse();
+		assertThat(match(EndpointId.of("baz"))).isFalse();
 	}
 
 	@Test
 	public void matchWhenExposeMatchesAndExcludeMatchesShouldNotMatch() {
 		setupFilter("bar,baz", "baz");
-		assertThat(match("baz")).isFalse();
+		assertThat(match(EndpointId.of("baz"))).isFalse();
 	}
 
 	@Test
 	public void matchWhenExposeMatchesAndExcludeDoesNotMatchShouldMatch() {
 		setupFilter("bar,baz", "buz");
-		assertThat(match("baz")).isTrue();
+		assertThat(match(EndpointId.of("baz"))).isTrue();
 	}
 
 	@Test
 	public void matchWhenExposeMatchesWithDifferentCaseShouldMatch() {
 		setupFilter("bar", "");
-		assertThat(match("bAr")).isTrue();
+		assertThat(match(EndpointId.of("bAr"))).isTrue();
 	}
 
 	@Test
@@ -127,23 +126,29 @@ public class ExposeExcludePropertyEndpointFilterTests {
 		environment.setProperty("foo.exclude", "");
 		this.filter = new ExposeExcludePropertyEndpointFilter<>(
 				DifferentTestExposableWebEndpoint.class, environment, "foo");
-		assertThat(match("baz")).isTrue();
+		assertThat(match(EndpointId.of("baz"))).isTrue();
 	}
 
 	@Test
 	public void matchWhenIncludeIsAsteriskShouldMatchAll() {
 		setupFilter("*", "buz");
-		assertThat(match("bar")).isTrue();
-		assertThat(match("baz")).isTrue();
-		assertThat(match("buz")).isFalse();
+		assertThat(match(EndpointId.of("bar"))).isTrue();
+		assertThat(match(EndpointId.of("baz"))).isTrue();
+		assertThat(match(EndpointId.of("buz"))).isFalse();
 	}
 
 	@Test
 	public void matchWhenExcludeIsAsteriskShouldMatchNone() {
 		setupFilter("bar,baz,buz", "*");
-		assertThat(match("bar")).isFalse();
-		assertThat(match("baz")).isFalse();
-		assertThat(match("buz")).isFalse();
+		assertThat(match(EndpointId.of("bar"))).isFalse();
+		assertThat(match(EndpointId.of("baz"))).isFalse();
+		assertThat(match(EndpointId.of("buz"))).isFalse();
+	}
+
+	@Test
+	public void matchWhenMixedCaseShouldMatch() {
+		setupFilter("foo-bar", "");
+		assertThat(match(EndpointId.of("fooBar"))).isTrue();
 	}
 
 	private void setupFilter(String include, String exclude) {
@@ -155,9 +160,9 @@ public class ExposeExcludePropertyEndpointFilterTests {
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	private boolean match(String id) {
+	private boolean match(EndpointId id) {
 		ExposableEndpoint<?> endpoint = mock(TestExposableWebEndpoint.class);
-		given(endpoint.getId()).willReturn(id);
+		given(endpoint.getEndpointId()).willReturn(id);
 		return ((EndpointFilter) this.filter).match(endpoint);
 	}
 

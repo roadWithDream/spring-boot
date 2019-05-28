@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.model.Dependency;
@@ -59,8 +60,13 @@ import org.springframework.boot.loader.tools.Repackager.MainClassTimeoutWarningL
  * @author Stephane Nicoll
  * @author Björn Lindström
  */
-@Mojo(name = "repackage", defaultPhase = LifecyclePhase.PACKAGE, requiresProject = true, threadSafe = true, requiresDependencyResolution = ResolutionScope.COMPILE_PLUS_RUNTIME, requiresDependencyCollection = ResolutionScope.COMPILE_PLUS_RUNTIME)
+@Mojo(name = "repackage", defaultPhase = LifecyclePhase.PACKAGE, requiresProject = true,
+		threadSafe = true,
+		requiresDependencyResolution = ResolutionScope.COMPILE_PLUS_RUNTIME,
+		requiresDependencyCollection = ResolutionScope.COMPILE_PLUS_RUNTIME)
 public class RepackageMojo extends AbstractDependencyFilterMojo {
+
+	private static final Pattern WHITE_SPACE_PATTERN = Pattern.compile("\\s+");
 
 	/**
 	 * The Maven project.
@@ -105,7 +111,7 @@ public class RepackageMojo extends AbstractDependencyFilterMojo {
 	 * the main artifact will be used as source and the repackaged archive will be
 	 * attached as a supplemental artifact with that classifier. Attaching the artifact
 	 * allows to deploy it alongside to the original one, see <a href=
-	 * "http://maven.apache.org/plugins/maven-deploy-plugin/examples/deploying-with-classifiers.html"
+	 * "https://maven.apache.org/plugins/maven-deploy-plugin/examples/deploying-with-classifiers.html"
 	 * > the maven documentation for more details</a>.
 	 * @since 1.0
 	 */
@@ -187,7 +193,7 @@ public class RepackageMojo extends AbstractDependencyFilterMojo {
 	 * Exclude Spring Boot devtools from the repackaged archive.
 	 * @since 1.3
 	 */
-	@Parameter(defaultValue = "true")
+	@Parameter(property = "spring-boot.repackage.excludeDevtools", defaultValue = "true")
 	private boolean excludeDevtools = true;
 
 	/**
@@ -242,7 +248,9 @@ public class RepackageMojo extends AbstractDependencyFilterMojo {
 	private Artifact getArtifact(String classifier) {
 		if (classifier != null) {
 			for (Artifact attachedArtifact : this.project.getAttachedArtifacts()) {
-				if (classifier.equals(attachedArtifact.getClassifier())) {
+				if (classifier.equals(attachedArtifact.getClassifier())
+						&& attachedArtifact.getFile() != null
+						&& attachedArtifact.getFile().isFile()) {
 					return attachedArtifact;
 				}
 			}
@@ -312,7 +320,8 @@ public class RepackageMojo extends AbstractDependencyFilterMojo {
 	}
 
 	private String removeLineBreaks(String description) {
-		return (description != null) ? description.replaceAll("\\s+", " ") : null;
+		return (description != null)
+				? WHITE_SPACE_PATTERN.matcher(description).replaceAll(" ") : null;
 	}
 
 	private void putIfMissing(Properties properties, String key,
@@ -331,15 +340,22 @@ public class RepackageMojo extends AbstractDependencyFilterMojo {
 		if (this.attach) {
 			attachArtifact(source, target);
 		}
-		else if (source.getFile().equals(target)) {
-			getLog().info("Updating artifact " + source.getFile() + " to " + original);
-			this.project.getArtifact().setFile(original);
+		else if (source.getFile().equals(target) && original.exists()) {
+			String artifactId = (this.classifier != null)
+					? "artifact with classifier " + this.classifier : "main artifact";
+			getLog().info(String.format("Updating %s %s to %s", artifactId,
+					source.getFile(), original));
+			source.setFile(original);
+		}
+		else if (this.classifier != null) {
+			getLog().info("Creating repackaged archive " + target + " with classifier "
+					+ this.classifier);
 		}
 	}
 
 	private void attachArtifact(Artifact source, File target) {
 		if (this.classifier != null && !source.getFile().equals(target)) {
-			getLog().info("Attaching archive " + target + " with classifier "
+			getLog().info("Attaching repackaged archive " + target + " with classifier "
 					+ this.classifier);
 			this.projectHelper.attachArtifact(this.project, this.project.getPackaging(),
 					this.classifier, target);
@@ -347,7 +363,7 @@ public class RepackageMojo extends AbstractDependencyFilterMojo {
 		else {
 			String artifactId = (this.classifier != null)
 					? "artifact with classifier " + this.classifier : "main artifact";
-			getLog().info(String.format("Replacing %s %s", artifactId, source.getFile()));
+			getLog().info("Replacing " + artifactId + " with repackaged archive");
 			source.setFile(target);
 		}
 	}

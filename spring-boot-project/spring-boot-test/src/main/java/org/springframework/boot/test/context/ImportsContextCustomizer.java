@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -46,7 +46,6 @@ import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.style.ToStringCreator;
 import org.springframework.core.type.AnnotationMetadata;
-import org.springframework.core.type.StandardAnnotationMetadata;
 import org.springframework.test.context.ContextCustomizer;
 import org.springframework.test.context.MergedContextConfiguration;
 import org.springframework.util.ReflectionUtils;
@@ -108,7 +107,6 @@ class ImportsContextCustomizer implements ContextCustomizer {
 		throw new IllegalStateException("Could not locate BeanDefinitionRegistry");
 	}
 
-	@SuppressWarnings("unchecked")
 	private BeanDefinition registerBean(BeanDefinitionRegistry registry,
 			AnnotatedBeanDefinitionReader reader, String beanName, Class<?> type) {
 		reader.registerBean(type, beanName);
@@ -139,9 +137,10 @@ class ImportsContextCustomizer implements ContextCustomizer {
 	}
 
 	/**
-	 * {@link Configuration} registered to trigger the {@link ImportsSelector}.
+	 * {@link Configuration @Configuration} registered to trigger the
+	 * {@link ImportsSelector}.
 	 */
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@Import(ImportsSelector.class)
 	static class ImportsConfiguration {
 
@@ -284,8 +283,8 @@ class ImportsContextCustomizer implements ContextCustomizer {
 		private Set<Object> determineImports(Set<Annotation> annotations,
 				Class<?> testClass) {
 			Set<Object> determinedImports = new LinkedHashSet<>();
-			AnnotationMetadata testClassMetadata = new StandardAnnotationMetadata(
-					testClass);
+			AnnotationMetadata testClassMetadata = AnnotationMetadata
+					.introspect(testClass);
 			for (Annotation annotation : annotations) {
 				for (Class<?> source : getImports(annotation)) {
 					Set<Object> determinedSourceImports = determineImports(source,

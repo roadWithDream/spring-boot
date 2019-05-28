@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,6 +16,7 @@
 
 package org.springframework.boot.actuate.context.properties;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -24,7 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.boot.actuate.context.properties.ConfigurationPropertiesReportEndpoint.ConfigurationPropertiesBeanDescriptor;
 import org.springframework.boot.actuate.context.properties.ConfigurationPropertiesReportEndpoint.ContextConfigurationProperties;
@@ -158,6 +159,16 @@ public class ConfigurationPropertiesReportEndpointTests {
 	}
 
 	@Test
+	public void duration() {
+		load((context, properties) -> {
+			Map<String, Object> nestedProperties = properties.getBeans()
+					.get("testProperties").getProperties();
+			assertThat(nestedProperties.get("duration"))
+					.isEqualTo(Duration.ofSeconds(10).toString());
+		});
+	}
+
+	@Test
 	public void singleLetterProperty() {
 		load((context, properties) -> {
 			Map<String, Object> nestedProperties = properties.getBeans()
@@ -222,7 +233,7 @@ public class ConfigurationPropertiesReportEndpointTests {
 		});
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@EnableConfigurationProperties
 	public static class Parent {
 
@@ -233,7 +244,7 @@ public class ConfigurationPropertiesReportEndpointTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@EnableConfigurationProperties
 	public static class Config {
 
@@ -275,6 +286,8 @@ public class ConfigurationPropertiesReportEndpointTests {
 		private List<List<ListItem>> listOfListItems = new ArrayList<>();
 
 		private String nullValue = null;
+
+		private Duration duration = Duration.ofSeconds(10);
 
 		public TestProperties() {
 			this.secrets.put("mine", "myPrivateThing");
@@ -377,6 +390,14 @@ public class ConfigurationPropertiesReportEndpointTests {
 
 		public void setNullValue(String nullValue) {
 			this.nullValue = nullValue;
+		}
+
+		public Duration getDuration() {
+			return this.duration;
+		}
+
+		public void setDuration(Duration duration) {
+			this.duration = duration;
 		}
 
 		public static class Hidden {

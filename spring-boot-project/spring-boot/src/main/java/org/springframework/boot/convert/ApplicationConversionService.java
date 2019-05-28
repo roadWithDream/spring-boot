@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -53,9 +53,14 @@ public class ApplicationConversionService extends FormattingConversionService {
 	}
 
 	/**
-	 * Return a shared default {@code ApplicationConversionService} instance, lazily
+	 * Return a shared default application {@code ConversionService} instance, lazily
 	 * building it once needed.
-	 * @return the shared {@code ConversionService} instance (never {@code null})
+	 * <p>
+	 * Note: This method actually returns an {@link ApplicationConversionService}
+	 * instance. However, the {@code ConversionService} signature has been preserved for
+	 * binary compatibility.
+	 * @return the shared {@code ApplicationConversionService} instance (never
+	 * {@code null})
 	 */
 	public static ConversionService getSharedInstance() {
 		ApplicationConversionService sharedInstance = ApplicationConversionService.sharedInstance;

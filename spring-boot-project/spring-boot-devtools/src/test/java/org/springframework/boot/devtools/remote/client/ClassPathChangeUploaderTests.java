@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,7 +20,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.net.ConnectException;
+import java.net.SocketException;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -29,7 +29,6 @@ import java.util.Set;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
 
 import org.springframework.boot.devtools.classpath.ClassPathChangedEvent;
@@ -46,6 +45,7 @@ import org.springframework.mock.http.client.MockClientHttpRequest;
 import org.springframework.util.FileCopyUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
  * Tests for {@link ClassPathChangeUploader}.
@@ -54,9 +54,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Andy Wilkinson
  */
 public class ClassPathChangeUploaderTests {
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
 
 	@Rule
 	public TemporaryFolder temp = new TemporaryFolder();
@@ -74,30 +71,32 @@ public class ClassPathChangeUploaderTests {
 
 	@Test
 	public void urlMustNotBeNull() {
-		this.thrown.expect(IllegalArgumentException.class);
-		this.thrown.expectMessage("URL must not be empty");
-		new ClassPathChangeUploader(null, this.requestFactory);
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new ClassPathChangeUploader(null, this.requestFactory))
+				.withMessageContaining("URL must not be empty");
 	}
 
 	@Test
 	public void urlMustNotBeEmpty() {
-		this.thrown.expect(IllegalArgumentException.class);
-		this.thrown.expectMessage("URL must not be empty");
-		new ClassPathChangeUploader("", this.requestFactory);
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new ClassPathChangeUploader("", this.requestFactory))
+				.withMessageContaining("URL must not be empty");
 	}
 
 	@Test
 	public void requestFactoryMustNotBeNull() {
-		this.thrown.expect(IllegalArgumentException.class);
-		this.thrown.expectMessage("RequestFactory must not be null");
-		new ClassPathChangeUploader("http://localhost:8080", null);
+		assertThatIllegalArgumentException()
+				.isThrownBy(
+						() -> new ClassPathChangeUploader("http://localhost:8080", null))
+				.withMessageContaining("RequestFactory must not be null");
 	}
 
 	@Test
 	public void urlMustNotBeMalformed() {
-		this.thrown.expect(IllegalArgumentException.class);
-		this.thrown.expectMessage("Malformed URL 'htttttp:///ttest'");
-		new ClassPathChangeUploader("htttttp:///ttest", this.requestFactory);
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new ClassPathChangeUploader("htttttp:///ttest",
+						this.requestFactory))
+				.withMessageContaining("Malformed URL 'htttttp:///ttest'");
 	}
 
 	@Test
@@ -112,10 +111,10 @@ public class ClassPathChangeUploaderTests {
 	}
 
 	@Test
-	public void retriesOnConnectException() throws Exception {
+	public void retriesOnSocketException() throws Exception {
 		File sourceFolder = this.temp.newFolder();
 		ClassPathChangedEvent event = createClassPathChangedEvent(sourceFolder);
-		this.requestFactory.willRespond(new ConnectException());
+		this.requestFactory.willRespond(new SocketException());
 		this.requestFactory.willRespond(HttpStatus.OK);
 		this.uploader.onApplicationEvent(event);
 		assertThat(this.requestFactory.getExecutedRequests()).hasSize(2);

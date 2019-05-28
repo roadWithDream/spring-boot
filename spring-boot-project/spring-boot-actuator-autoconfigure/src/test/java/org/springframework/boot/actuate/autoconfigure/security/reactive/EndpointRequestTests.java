@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,13 +16,15 @@
 
 package org.springframework.boot.actuate.autoconfigure.security.reactive;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.assertj.core.api.AssertDelegateTarget;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.boot.actuate.autoconfigure.endpoint.web.WebEndpointProperties;
+import org.springframework.boot.actuate.endpoint.EndpointId;
 import org.springframework.boot.actuate.endpoint.ExposableEndpoint;
 import org.springframework.boot.actuate.endpoint.Operation;
 import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
@@ -129,9 +131,9 @@ public class EndpointRequestTests {
 		ServerWebExchangeMatcher matcher = EndpointRequest.toAnyEndpoint()
 				.excluding(FooEndpoint.class, BazServletEndpoint.class);
 		List<ExposableEndpoint<?>> endpoints = new ArrayList<>();
-		endpoints.add(mockEndpoint("foo", "foo"));
-		endpoints.add(mockEndpoint("bar", "bar"));
-		endpoints.add(mockEndpoint("baz", "baz"));
+		endpoints.add(mockEndpoint(EndpointId.of("foo"), "foo"));
+		endpoints.add(mockEndpoint(EndpointId.of("bar"), "bar"));
+		endpoints.add(mockEndpoint(EndpointId.of("baz"), "baz"));
 		PathMappedEndpoints pathMappedEndpoints = new PathMappedEndpoints("/actuator",
 				() -> endpoints);
 		assertMatcher(matcher, pathMappedEndpoints).doesNotMatch("/actuator/foo");
@@ -202,14 +204,14 @@ public class EndpointRequestTests {
 
 	private PathMappedEndpoints mockPathMappedEndpoints(String basePath) {
 		List<ExposableEndpoint<?>> endpoints = new ArrayList<>();
-		endpoints.add(mockEndpoint("foo", "foo"));
-		endpoints.add(mockEndpoint("bar", "bar"));
+		endpoints.add(mockEndpoint(EndpointId.of("foo"), "foo"));
+		endpoints.add(mockEndpoint(EndpointId.of("bar"), "bar"));
 		return new PathMappedEndpoints(basePath, () -> endpoints);
 	}
 
-	private TestEndpoint mockEndpoint(String id, String rootPath) {
+	private TestEndpoint mockEndpoint(EndpointId id, String rootPath) {
 		TestEndpoint endpoint = mock(TestEndpoint.class);
-		given(endpoint.getId()).willReturn(id);
+		given(endpoint.getEndpointId()).willReturn(id);
 		given(endpoint.getRootPath()).willReturn(rootPath);
 		return endpoint;
 	}
@@ -249,8 +251,8 @@ public class EndpointRequestTests {
 		}
 
 		private void matches(ServerWebExchange exchange) {
-			assertThat(this.matcher.matches(exchange).block().isMatch())
-					.as("Matches " + getRequestPath(exchange)).isTrue();
+			assertThat(this.matcher.matches(exchange).block(Duration.ofSeconds(30))
+					.isMatch()).as("Matches " + getRequestPath(exchange)).isTrue();
 		}
 
 		void doesNotMatch(String path) {
@@ -261,8 +263,9 @@ public class EndpointRequestTests {
 		}
 
 		private void doesNotMatch(ServerWebExchange exchange) {
-			assertThat(this.matcher.matches(exchange).block().isMatch())
-					.as("Does not match " + getRequestPath(exchange)).isFalse();
+			assertThat(this.matcher.matches(exchange).block(Duration.ofSeconds(30))
+					.isMatch()).as("Does not match " + getRequestPath(exchange))
+							.isFalse();
 		}
 
 		private TestHttpWebHandlerAdapter webHandler() {

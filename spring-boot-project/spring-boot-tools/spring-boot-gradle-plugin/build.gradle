@@ -4,7 +4,7 @@ buildscript {
 		mavenCentral()
 	}
 	dependencies {
-		classpath("io.spring.javaformat:spring-javaformat-gradle-plugin:0.0.6")
+		classpath("io.spring.javaformat:spring-javaformat-gradle-plugin:0.0.9")
 	}
 }
 
@@ -21,12 +21,12 @@ repositories {
 }
 
 dependencies {
-	compile localGroovy()
-	compile gradleApi()
-	compile fileTree(dir: 'target/dependencies/compile', include: '*.jar')
-	testCompile gradleTestKit()
-	testCompile 'org.apache.commons:commons-compress:1.13'
-	testCompile fileTree(dir: 'target/dependencies/test', include: '*.jar')
+	implementation localGroovy()
+	implementation gradleApi()
+	implementation fileTree(dir: 'target/dependencies/compile', include: '*.jar')
+	testImplementation gradleTestKit()
+	testImplementation 'org.apache.commons:commons-compress:1.13'
+	testImplementation fileTree(dir: 'target/dependencies/test', include: '*.jar')
 }
 
 jar {
@@ -36,6 +36,7 @@ jar {
 }
 
 test {
+	useJUnitPlatform()
 	testLogging {
 		events "passed", "skipped", "failed"
 	}
@@ -46,7 +47,7 @@ javadoc {
 		author()
 		stylesheetFile = file('src/main/javadoc/spring-javadoc.css')
 		links = [
-			'http://docs.oracle.com/javase/8/docs/api/',
+			'https://docs.oracle.com/javase/8/docs/api/',
 			'https://docs.gradle.org/current/javadoc/'
 		]
 	}

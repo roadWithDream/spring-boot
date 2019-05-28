@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -76,8 +76,9 @@ public class EndpointLinksResolver {
 				collectLinks(links, (ExposableWebEndpoint) endpoint, normalizedUrl);
 			}
 			else if (endpoint instanceof PathMappedEndpoint) {
-				links.put(endpoint.getId(), createLink(normalizedUrl,
-						((PathMappedEndpoint) endpoint).getRootPath()));
+				String rootPath = ((PathMappedEndpoint) endpoint).getRootPath();
+				Link link = createLink(normalizedUrl, rootPath);
+				links.put(endpoint.getEndpointId().toLowerCaseString(), link);
 			}
 		}
 		return links;

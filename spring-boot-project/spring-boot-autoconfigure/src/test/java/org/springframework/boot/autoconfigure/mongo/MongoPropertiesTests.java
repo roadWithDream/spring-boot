@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,15 +21,12 @@ import java.util.List;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientOptions;
 import com.mongodb.ServerAddress;
-import com.mongodb.connection.Cluster;
-import com.mongodb.connection.ClusterSettings;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.util.TestPropertyValues;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -40,6 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Andy Wilkinson
  * @author Stephane Nicoll
  * @author Mark Paluch
+ * @author Artsiom Yudovin
  */
 public class MongoPropertiesTests {
 
@@ -120,7 +118,7 @@ public class MongoPropertiesTests {
 		properties.setUri("mongodb://mongo1.example.com:12345");
 		MongoClient client = new MongoClientFactory(properties, null)
 				.createMongoClient(null);
-		List<ServerAddress> allAddresses = extractServerAddresses(client);
+		List<ServerAddress> allAddresses = getAllAddresses(client);
 		assertThat(allAddresses).hasSize(1);
 		assertServerAddress(allAddresses.get(0), "mongo1.example.com", 12345);
 	}
@@ -132,7 +130,7 @@ public class MongoPropertiesTests {
 		properties.setPort(27017);
 		MongoClient client = new MongoClientFactory(properties, null)
 				.createMongoClient(null);
-		List<ServerAddress> allAddresses = extractServerAddresses(client);
+		List<ServerAddress> allAddresses = getAllAddresses(client);
 		assertThat(allAddresses).hasSize(1);
 		assertServerAddress(allAddresses.get(0), "localhost", 27017);
 	}
@@ -143,7 +141,7 @@ public class MongoPropertiesTests {
 		properties.setUri("mongodb://mongo1.example.com:12345");
 		MongoClient client = new MongoClientFactory(properties, null)
 				.createMongoClient(null);
-		List<ServerAddress> allAddresses = extractServerAddresses(client);
+		List<ServerAddress> allAddresses = getAllAddresses(client);
 		assertThat(allAddresses).hasSize(1);
 		assertServerAddress(allAddresses.get(0), "mongo1.example.com", 12345);
 	}
@@ -153,17 +151,27 @@ public class MongoPropertiesTests {
 		MongoProperties properties = new MongoProperties();
 		MongoClient client = new MongoClientFactory(properties, null)
 				.createMongoClient(null);
-		List<ServerAddress> allAddresses = extractServerAddresses(client);
+		List<ServerAddress> allAddresses = getAllAddresses(client);
 		assertThat(allAddresses).hasSize(1);
 		assertServerAddress(allAddresses.get(0), "localhost", 27017);
 	}
 
-	private List<ServerAddress> extractServerAddresses(MongoClient client) {
-		Cluster cluster = (Cluster) ReflectionTestUtils
-				.getField(ReflectionTestUtils.getField(client, "delegate"), "cluster");
-		ClusterSettings clusterSettings = (ClusterSettings) ReflectionTestUtils
-				.getField(cluster, "settings");
-		return clusterSettings.getHosts();
+	@SuppressWarnings("deprecation")
+	private List<ServerAddress> getAllAddresses(MongoClient client) {
+		// At some point we'll probably need to use reflection to find the address but for
+		// now, we can use the deprecated getAllAddress method.
+		return client.getAllAddress();
+	}
+
+	@Test
+	public void canBindAutoIndexCreation() {
+		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
+		TestPropertyValues.of("spring.data.mongodb.autoIndexCreation:true")
+				.applyTo(context);
+		context.register(Config.class);
+		context.refresh();
+		MongoProperties properties = context.getBean(MongoProperties.class);
+		assertThat(properties.isAutoIndexCreation()).isTrue();
 	}
 
 	private void assertServerAddress(ServerAddress serverAddress, String expectedHost,
@@ -172,7 +180,7 @@ public class MongoPropertiesTests {
 		assertThat(serverAddress.getPort()).isEqualTo(expectedPort);
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@EnableConfigurationProperties(MongoProperties.class)
 	static class Config {
 

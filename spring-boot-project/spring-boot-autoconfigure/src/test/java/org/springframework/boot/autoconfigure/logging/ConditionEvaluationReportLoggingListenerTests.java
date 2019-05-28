@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2017 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,8 +21,8 @@ import java.util.Arrays;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.LoggerContext;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.slf4j.impl.StaticLoggerBinder;
 
 import org.springframework.boot.SpringApplication;
@@ -31,28 +31,31 @@ import org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoCon
 import org.springframework.boot.autoconfigure.http.HttpMessageConvertersAutoConfiguration;
 import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.context.event.ApplicationFailedEvent;
-import org.springframework.boot.testsupport.rule.OutputCapture;
+import org.springframework.boot.logging.LogLevel;
+import org.springframework.boot.test.extension.OutputCapture;
+import org.springframework.boot.web.servlet.context.AnnotationConfigServletWebApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.mock.web.MockServletContext;
-import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
  * Tests for {@link ConditionEvaluationReportLoggingListener}.
  *
  * @author Phillip Webb
  * @author Andy Wilkinson
+ * @author Madhura Bhave
  */
 public class ConditionEvaluationReportLoggingListenerTests {
 
-	@Rule
-	public OutputCapture outputCapture = new OutputCapture();
+	@RegisterExtension
+	public OutputCapture output = new OutputCapture();
 
 	private ConditionEvaluationReportLoggingListener initializer = new ConditionEvaluationReportLoggingListener();
 
@@ -64,8 +67,7 @@ public class ConditionEvaluationReportLoggingListenerTests {
 		context.refresh();
 		withDebugLogging(() -> this.initializer
 				.onApplicationEvent(new ContextRefreshedEvent(context)));
-		assertThat(this.outputCapture.toString())
-				.contains("CONDITIONS EVALUATION REPORT");
+		assertThat(this.output).contains("CONDITIONS EVALUATION REPORT");
 	}
 
 	@Test
@@ -73,17 +75,11 @@ public class ConditionEvaluationReportLoggingListenerTests {
 		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
 		this.initializer.initialize(context);
 		context.register(ErrorConfig.class);
-		try {
-			context.refresh();
-			fail("Did not error");
-		}
-		catch (Exception ex) {
-			withDebugLogging(
-					() -> this.initializer.onApplicationEvent(new ApplicationFailedEvent(
-							new SpringApplication(), new String[0], context, ex)));
-		}
-		assertThat(this.outputCapture.toString())
-				.contains("CONDITIONS EVALUATION REPORT");
+		assertThatExceptionOfType(Exception.class).isThrownBy(context::refresh).satisfies(
+				(ex) -> withDebugLogging(() -> this.initializer.onApplicationEvent(
+						new ApplicationFailedEvent(new SpringApplication(), new String[0],
+								context, ex))));
+		assertThat(this.output).contains("CONDITIONS EVALUATION REPORT");
 	}
 
 	@Test
@@ -91,15 +87,11 @@ public class ConditionEvaluationReportLoggingListenerTests {
 		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
 		this.initializer.initialize(context);
 		context.register(ErrorConfig.class);
-		try {
-			context.refresh();
-			fail("Did not error");
-		}
-		catch (Exception ex) {
-			this.initializer.onApplicationEvent(new ApplicationFailedEvent(
-					new SpringApplication(), new String[0], context, ex));
-		}
-		assertThat(this.outputCapture.toString()).contains("Error starting"
+		assertThatExceptionOfType(Exception.class).isThrownBy(context::refresh)
+				.satisfies((ex) -> this.initializer.onApplicationEvent(
+						new ApplicationFailedEvent(new SpringApplication(), new String[0],
+								context, ex)));
+		assertThat(this.output).contains("Error starting"
 				+ " ApplicationContext. To display the conditions report re-run"
 				+ " your application with 'debug' enabled.");
 	}
@@ -114,7 +106,7 @@ public class ConditionEvaluationReportLoggingListenerTests {
 		context.refresh();
 		withDebugLogging(() -> this.initializer
 				.onApplicationEvent(new ContextRefreshedEvent(context)));
-		assertThat(this.outputCapture.toString())
+		assertThat(this.output)
 				.contains("not a servlet web application (OnWebApplicationCondition)");
 	}
 
@@ -129,7 +121,7 @@ public class ConditionEvaluationReportLoggingListenerTests {
 
 	@Test
 	public void canBeUsedInNonGenericApplicationContext() {
-		AnnotationConfigWebApplicationContext context = new AnnotationConfigWebApplicationContext();
+		AnnotationConfigServletWebApplicationContext context = new AnnotationConfigServletWebApplicationContext();
 		context.setServletContext(new MockServletContext());
 		context.register(Config.class);
 		new ConditionEvaluationReportLoggingListener().initialize(context);
@@ -138,12 +130,30 @@ public class ConditionEvaluationReportLoggingListenerTests {
 	}
 
 	@Test
+	public void listenerWithInfoLevelShouldLogAtInfo() {
+		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
+		ConditionEvaluationReportLoggingListener initializer = new ConditionEvaluationReportLoggingListener(
+				LogLevel.INFO);
+		initializer.initialize(context);
+		context.register(Config.class);
+		context.refresh();
+		initializer.onApplicationEvent(new ContextRefreshedEvent(context));
+		assertThat(this.output).contains("CONDITIONS EVALUATION REPORT");
+	}
+
+	@Test
+	public void listenerSupportsOnlyInfoAndDebug() {
+		assertThatIllegalArgumentException().isThrownBy(
+				() -> new ConditionEvaluationReportLoggingListener(LogLevel.TRACE))
+				.withMessageContaining("LogLevel must be INFO or DEBUG");
+	}
+
+	@Test
 	public void noErrorIfNotInitialized() {
 		this.initializer
 				.onApplicationEvent(new ApplicationFailedEvent(new SpringApplication(),
 						new String[0], null, new RuntimeException("Planned")));
-		assertThat(this.outputCapture.toString())
-				.contains("Unable to provide the conditions report");
+		assertThat(this.output).contains("Unable to provide the conditions report");
 	}
 
 	private void withDebugLogging(Runnable runnable) {
@@ -160,14 +170,14 @@ public class ConditionEvaluationReportLoggingListenerTests {
 		}
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@Import({ WebMvcAutoConfiguration.class, HttpMessageConvertersAutoConfiguration.class,
 			PropertyPlaceholderAutoConfiguration.class })
 	static class Config {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@Import(WebMvcAutoConfiguration.class)
 	static class ErrorConfig {
 

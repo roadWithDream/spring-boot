@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,10 +18,7 @@ package org.springframework.boot.test.context;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.boot.SpringApplication;
@@ -30,6 +27,7 @@ import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.boot.context.properties.source.ConfigurationPropertySource;
 import org.springframework.boot.context.properties.source.MapConfigurationPropertySource;
+import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.web.SpringBootMockServletContext;
 import org.springframework.boot.test.util.TestPropertyValues;
 import org.springframework.boot.web.reactive.context.GenericReactiveWebApplicationContext;
@@ -39,7 +37,8 @@ import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.Ordered;
 import org.springframework.core.SpringVersion;
-import org.springframework.core.annotation.AnnotatedElementUtils;
+import org.springframework.core.annotation.MergedAnnotations;
+import org.springframework.core.annotation.MergedAnnotations.SearchStrategy;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.StandardEnvironment;
@@ -61,7 +60,8 @@ import org.springframework.web.context.support.GenericWebApplicationContext;
 /**
  * A {@link ContextLoader} that can be used to test Spring Boot applications (those that
  * normally startup using {@link SpringApplication}). Although this loader can be used
- * directly, most test will instead want to use it with {@link SpringBootTest}.
+ * directly, most test will instead want to use it with
+ * {@link SpringBootTest @SpringBootTest}.
  * <p>
  * The loader supports both standard {@link MergedContextConfiguration} as well as
  * {@link WebMergedContextConfiguration}. If {@link WebMergedContextConfiguration} is used
@@ -80,14 +80,7 @@ import org.springframework.web.context.support.GenericWebApplicationContext;
  */
 public class SpringBootContextLoader extends AbstractContextLoader {
 
-	private static final Set<String> INTEGRATION_TEST_ANNOTATIONS;
-
-	static {
-		Set<String> annotations = new LinkedHashSet<>();
-		annotations.add("org.springframework.boot.test.IntegrationTest");
-		annotations.add("org.springframework.boot.test.WebIntegrationTest");
-		INTEGRATION_TEST_ANNOTATIONS = Collections.unmodifiableSet(annotations);
-	}
+	private static final String[] NO_ARGS = new String[0];
 
 	@Override
 	public ApplicationContext loadContext(MergedContextConfiguration config)
@@ -136,7 +129,7 @@ public class SpringBootContextLoader extends AbstractContextLoader {
 			application.setWebApplicationType(WebApplicationType.NONE);
 		}
 		application.setInitializers(initializers);
-		return application.run();
+		return application.run(getArgs(config));
 	}
 
 	/**
@@ -155,6 +148,19 @@ public class SpringBootContextLoader extends AbstractContextLoader {
 	 */
 	protected ConfigurableEnvironment getEnvironment() {
 		return new StandardEnvironment();
+	}
+
+	/**
+	 * Return the application arguments to use. If no arguments are available, return an
+	 * empty array.
+	 * @param config the source context configuration
+	 * @return the application arguments to use
+	 * @see SpringApplication#run(String...)
+	 */
+	protected String[] getArgs(MergedContextConfiguration config) {
+		return MergedAnnotations.from(config.getTestClass(), SearchStrategy.EXHAUSTIVE)
+				.get(SpringBootTest.class).getValue("args", String[].class)
+				.orElse(NO_ARGS);
 	}
 
 	private void setActiveProfiles(ConfigurableEnvironment environment,
@@ -222,17 +228,10 @@ public class SpringBootContextLoader extends AbstractContextLoader {
 	}
 
 	private boolean isEmbeddedWebEnvironment(MergedContextConfiguration config) {
-		for (String annotation : INTEGRATION_TEST_ANNOTATIONS) {
-			if (AnnotatedElementUtils.isAnnotated(config.getTestClass(), annotation)) {
-				return true;
-			}
-		}
-		SpringBootTest annotation = AnnotatedElementUtils
-				.findMergedAnnotation(config.getTestClass(), SpringBootTest.class);
-		if (annotation != null && annotation.webEnvironment().isEmbedded()) {
-			return true;
-		}
-		return false;
+		return MergedAnnotations.from(config.getTestClass(), SearchStrategy.EXHAUSTIVE)
+				.get(SpringBootTest.class)
+				.getValue("webEnvironment", WebEnvironment.class)
+				.orElse(WebEnvironment.NONE).isEmbedded();
 	}
 
 	@Override

@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,7 +32,7 @@ import org.springframework.cache.CacheManager;
 import org.springframework.lang.Nullable;
 
 /**
- * {@link Endpoint} to expose available {@link Cache caches}.
+ * {@link Endpoint @Endpoint} to expose available {@link Cache caches}.
  *
  * @author Johannes Edmeier
  * @author Stephane Nicoll
@@ -74,10 +74,10 @@ public class CachesEndpoint {
 
 	/**
 	 * Return a {@link CacheDescriptor} for the specified cache.
-	 * @param cache then name of the cache
+	 * @param cache the name of the cache
 	 * @param cacheManager the name of the cacheManager (can be {@code null}
 	 * @return the descriptor of the cache or {@code null} if no such cache exists
-	 * @throws NonUniqueCacheException if more than one cache with that name exist and no
+	 * @throws NonUniqueCacheException if more than one cache with that name exists and no
 	 * {@code cacheManager} was provided to identify a unique candidate
 	 */
 	@ReadOperation
@@ -96,11 +96,12 @@ public class CachesEndpoint {
 
 	/**
 	 * Clear the specific {@link Cache}.
-	 * @param cache then name of the cache
+	 * @param cache the name of the cache
 	 * @param cacheManager the name of the cacheManager (can be {@code null} to match all)
 	 * @return {@code true} if the cache was cleared or {@code false} if no such cache
 	 * exists
-	 * @throws NonUniqueCacheException if more than one cache with that name exist and no
+	 * @throws NonUniqueCacheException if more than one cache with that name exists and no
+	 * {@code cacheManager} was provided to identify a unique candidate
 	 */
 	@DeleteOperation
 	public boolean clearCache(@Selector String cache, @Nullable String cacheManager) {

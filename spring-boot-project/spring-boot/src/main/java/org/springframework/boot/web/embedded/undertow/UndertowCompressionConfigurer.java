@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -65,7 +65,8 @@ final class UndertowCompressionConfigurer {
 
 	private static Predicate[] getCompressionPredicates(Compression compression) {
 		List<Predicate> predicates = new ArrayList<>();
-		predicates.add(new MaxSizePredicate(compression.getMinResponseSize()));
+		predicates.add(
+				new MaxSizePredicate((int) compression.getMinResponseSize().toBytes()));
 		predicates.add(new CompressibleMimeTypePredicate(compression.getMimeTypes()));
 		if (compression.getExcludedUserAgents() != null) {
 			for (String agent : compression.getExcludedUserAgents()) {

@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,7 +18,9 @@ package org.springframework.boot.cli;
 
 import java.io.IOException;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 import org.springframework.boot.cli.infrastructure.CommandLineInvoker;
 import org.springframework.boot.cli.infrastructure.CommandLineInvoker.Invocation;
@@ -36,7 +38,10 @@ import static org.junit.Assert.assertThat;
  */
 public class CommandLineIT {
 
-	private final CommandLineInvoker cli = new CommandLineInvoker();
+	@Rule
+	public final TemporaryFolder temp = new TemporaryFolder();
+
+	private final CommandLineInvoker cli = new CommandLineInvoker(this.temp);
 
 	@Test
 	public void hintProducesListOfValidCommands()

@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -150,6 +150,19 @@ public class PropertiesMigrationReporterTests {
 		assertThat(report).containsSubsequence("Property source 'test'",
 				"wrong.inconvertible", "Line: 1", "Reason: Replacement key "
 						+ "'test.inconvertible' uses an incompatible target type");
+	}
+
+	@Test
+	public void invalidReplacementHandled() throws IOException {
+		this.environment.getPropertySources().addFirst(loadPropertySource("first",
+				"config/config-error-invalid-replacement.properties"));
+		String report = createErrorReport(
+				loadRepository("metadata/sample-metadata-invalid-replacement.json"));
+		assertThat(report).isNotNull();
+		assertThat(report).containsSubsequence("Property source 'first'",
+				"deprecated.six.test", "Line: 1", "Reason",
+				"No metadata found for replacement key 'does.not.exist'");
+		assertThat(report).doesNotContain("null");
 	}
 
 	private List<String> mapToNames(PropertySources sources) {

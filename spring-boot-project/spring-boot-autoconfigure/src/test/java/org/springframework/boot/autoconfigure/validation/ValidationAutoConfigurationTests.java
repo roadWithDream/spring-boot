@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,12 +24,9 @@ import javax.validation.Validator;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.Size;
 
-import org.junit.After;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
-import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.boot.autoconfigure.validation.ValidationAutoConfigurationTests.CustomValidatorConfiguration.TestBeanPostProcessor;
 import org.springframework.boot.test.util.TestPropertyValues;
@@ -37,6 +34,7 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.validation.beanvalidation.CustomValidatorBean;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
@@ -44,6 +42,7 @@ import org.springframework.validation.beanvalidation.MethodValidationPostProcess
 import org.springframework.validation.beanvalidation.OptionalValidatorFactoryBean;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.Mockito.mock;
 
 /**
@@ -54,12 +53,9 @@ import static org.mockito.Mockito.mock;
  */
 public class ValidationAutoConfigurationTests {
 
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-
 	private AnnotationConfigApplicationContext context;
 
-	@After
+	@AfterEach
 	public void close() {
 		if (this.context != null) {
 			this.context.close();
@@ -161,8 +157,8 @@ public class ValidationAutoConfigurationTests {
 		assertThat(this.context.getBeansOfType(Validator.class)).hasSize(1);
 		SampleService service = this.context.getBean(SampleService.class);
 		service.doSomething("Valid");
-		this.thrown.expect(ConstraintViolationException.class);
-		service.doSomething("KO");
+		assertThatExceptionOfType(ConstraintViolationException.class)
+				.isThrownBy(() -> service.doSomething("KO"));
 	}
 
 	@Test
@@ -172,8 +168,8 @@ public class ValidationAutoConfigurationTests {
 		DefaultAnotherSampleService service = this.context
 				.getBean(DefaultAnotherSampleService.class);
 		service.doSomething(42);
-		this.thrown.expect(ConstraintViolationException.class);
-		service.doSomething(2);
+		assertThatExceptionOfType(ConstraintViolationException.class)
+				.isThrownBy(() -> service.doSomething(2));
 	}
 
 	@Test
@@ -185,8 +181,8 @@ public class ValidationAutoConfigurationTests {
 				.isEmpty();
 		AnotherSampleService service = this.context.getBean(AnotherSampleService.class);
 		service.doSomething(42);
-		this.thrown.expect(ConstraintViolationException.class);
-		service.doSomething(2);
+		assertThatExceptionOfType(ConstraintViolationException.class)
+				.isThrownBy(() -> service.doSomething(2));
 	}
 
 	@Test
@@ -199,9 +195,8 @@ public class ValidationAutoConfigurationTests {
 				.isSameAs(userMethodValidationPostProcessor);
 		assertThat(this.context.getBeansOfType(MethodValidationPostProcessor.class))
 				.hasSize(1);
-		assertThat(this.context.getBean(Validator.class))
-				.isNotSameAs(new DirectFieldAccessor(userMethodValidationPostProcessor)
-						.getPropertyValue("validator"));
+		assertThat(this.context.getBean(Validator.class)).isNotSameAs(ReflectionTestUtils
+				.getField(userMethodValidationPostProcessor, "validator"));
 	}
 
 	@Test
@@ -226,12 +221,12 @@ public class ValidationAutoConfigurationTests {
 		this.context = ctx;
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class Config {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class UserDefinedValidatorConfig {
 
 		@Bean
@@ -241,7 +236,7 @@ public class ValidationAutoConfigurationTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class UserDefinedDefaultValidatorConfig {
 
 		@Bean
@@ -251,7 +246,7 @@ public class ValidationAutoConfigurationTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class UserDefinedJsrValidatorConfig {
 
 		@Bean
@@ -261,7 +256,7 @@ public class ValidationAutoConfigurationTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class UserDefinedSpringValidatorConfig {
 
 		@Bean
@@ -276,7 +271,7 @@ public class ValidationAutoConfigurationTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class UserDefinedPrimarySpringValidatorConfig {
 
 		@Bean
@@ -317,7 +312,7 @@ public class ValidationAutoConfigurationTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class AnotherSampleServiceConfiguration {
 
 		@Bean
@@ -327,7 +322,7 @@ public class ValidationAutoConfigurationTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class SampleConfiguration {
 
 		@Bean
@@ -337,7 +332,7 @@ public class ValidationAutoConfigurationTests {
 
 	}
 
-	@org.springframework.context.annotation.Configuration
+	@org.springframework.context.annotation.Configuration(proxyBeanMethods = false)
 	static class CustomValidatorConfiguration {
 
 		CustomValidatorConfiguration(SomeService someService) {
@@ -354,7 +349,7 @@ public class ValidationAutoConfigurationTests {
 			return new TestBeanPostProcessor();
 		}
 
-		@Configuration
+		@Configuration(proxyBeanMethods = false)
 		static class SomeServiceConfiguration {
 
 			@Bean

@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -50,18 +50,19 @@ import io.micrometer.core.lang.NonNull;
 import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import io.prometheus.client.CollectorRegistry;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.actuate.metrics.Autotime;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpStatus;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -76,6 +77,7 @@ import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
 import org.springframework.web.util.NestedServletException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -92,7 +94,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * @author Jon Schneider
  */
-@RunWith(SpringRunner.class)
+@ExtendWith(SpringExtension.class)
 @WebAppConfiguration
 public class WebMvcMetricsFilterTests {
 
@@ -118,7 +120,7 @@ public class WebMvcMetricsFilterTests {
 	@Qualifier("completableFutureBarrier")
 	private CyclicBarrier completableFutureBarrier;
 
-	@Before
+	@BeforeEach
 	public void setupMockMvc() {
 		this.mvc = MockMvcBuilders.webAppContextSetup(this.context)
 				.addFilters(this.filter, new RedirectAndNotFoundFilter()).build();
@@ -189,6 +191,16 @@ public class WebMvcMetricsFilterTests {
 	}
 
 	@Test
+	public void streamingError() throws Exception {
+		MvcResult result = this.mvc.perform(get("/api/c1/streamingError"))
+				.andExpect(request().asyncStarted()).andReturn();
+		assertThatCode(
+				() -> this.mvc.perform(asyncDispatch(result)).andExpect(status().isOk()));
+		assertThat(this.registry.get("http.server.requests")
+				.tags("exception", "IOException").timer().count()).isEqualTo(1L);
+	}
+
+	@Test
 	public void anonymousError() {
 		try {
 			this.mvc.perform(get("/api/c1/anonymousError/10"));
@@ -219,39 +231,24 @@ public class WebMvcMetricsFilterTests {
 		// once the mapping completes, we can gather information about status, etc.
 		this.callableBarrier.await();
 		MockClock.clock(this.registry).add(Duration.ofSeconds(2));
-		// while the mapping is running, it contributes to the activeTasks count
-		assertThat(this.registry.get("my.long.request").tags("region", "test")
-				.longTaskTimer().activeTasks()).isEqualTo(1);
 		this.callableBarrier.await();
 		backgroundRequest.join();
 		this.mvc.perform(asyncDispatch(result.get())).andExpect(status().isOk());
 		assertThat(this.registry.get("http.server.requests").tags("status", "200")
 				.tags("uri", "/api/c1/callable/{id}").timer().totalTime(TimeUnit.SECONDS))
 						.isEqualTo(2L);
-		// once the async dispatch is complete, it should no longer contribute to the
-		// activeTasks count
-		assertThat(this.registry.get("my.long.request").tags("region", "test")
-				.longTaskTimer().activeTasks()).isEqualTo(0);
 	}
 
 	@Test
 	public void asyncRequestThatThrowsUncheckedException() throws Exception {
 		MvcResult result = this.mvc.perform(get("/api/c1/completableFutureException"))
 				.andExpect(request().asyncStarted()).andReturn();
-		// once the async dispatch is complete, it should no longer contribute to the
-		// activeTasks count
-		assertThat(this.registry.get("my.long.request.exception").longTaskTimer()
-				.activeTasks()).isEqualTo(1);
 		assertThatExceptionOfType(NestedServletException.class)
 				.isThrownBy(() -> this.mvc.perform(asyncDispatch(result)))
 				.withRootCauseInstanceOf(RuntimeException.class);
 		assertThat(this.registry.get("http.server.requests")
 				.tags("uri", "/api/c1/completableFutureException").timer().count())
 						.isEqualTo(1);
-		// once the async dispatch is complete, it should no longer contribute to the
-		// activeTasks count
-		assertThat(this.registry.get("my.long.request.exception").longTaskTimer()
-				.activeTasks()).isEqualTo(0);
 	}
 
 	@Test
@@ -313,7 +310,7 @@ public class WebMvcMetricsFilterTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@EnableWebMvc
 	@Import({ Controller1.class, Controller2.class })
 	static class MetricsFilterApp {
@@ -375,8 +372,8 @@ public class WebMvcMetricsFilterTests {
 		@Bean
 		WebMvcMetricsFilter webMetricsFilter(MeterRegistry registry,
 				WebApplicationContext ctx) {
-			return new WebMvcMetricsFilter(ctx, registry, new DefaultWebMvcTagsProvider(),
-					"http.server.requests", true);
+			return new WebMvcMetricsFilter(registry, new DefaultWebMvcTagsProvider(),
+					"http.server.requests", new Autotime());
 		}
 
 	}
@@ -400,8 +397,8 @@ public class WebMvcMetricsFilterTests {
 		}
 
 		@Timed
-		@Timed(value = "my.long.request", extraTags = { "region",
-				"test" }, longTask = true)
+		@Timed(value = "my.long.request", extraTags = { "region", "test" },
+				longTask = true)
 		@GetMapping("/callable/{id}")
 		public Callable<String> asyncCallable(@PathVariable Long id) throws Exception {
 			this.callableBarrier.await();
@@ -464,6 +461,14 @@ public class WebMvcMetricsFilterTests {
 		@GetMapping("/unhandledError/{id}")
 		public String alwaysThrowsUnhandledException(@PathVariable Long id) {
 			throw new RuntimeException("Boom on " + id + "!");
+		}
+
+		@GetMapping("/streamingError")
+		public ResponseBodyEmitter streamingError() {
+			ResponseBodyEmitter emitter = new ResponseBodyEmitter();
+			emitter.completeWithError(
+					new IOException("error while writing to the response"));
+			return emitter;
 		}
 
 		@Timed

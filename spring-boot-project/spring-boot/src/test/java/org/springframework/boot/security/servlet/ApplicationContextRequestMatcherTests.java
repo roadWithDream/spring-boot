@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,9 +20,7 @@ import java.util.function.Supplier;
 
 import javax.servlet.http.HttpServletRequest;
 
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.context.ApplicationContext;
@@ -32,6 +30,8 @@ import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.context.support.StaticWebApplicationContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
  * Tests for {@link ApplicationContextRequestMatcher}.
@@ -40,14 +40,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 public class ApplicationContextRequestMatcherTests {
 
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-
 	@Test
 	public void createWhenContextClassIsNullShouldThrowException() {
-		this.thrown.expect(IllegalArgumentException.class);
-		this.thrown.expectMessage("Context class must not be null");
-		new TestApplicationContextRequestMatcher<>(null);
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new TestApplicationContextRequestMatcher<>(null))
+				.withMessageContaining("Context class must not be null");
 	}
 
 	@Test
@@ -71,8 +68,8 @@ public class ApplicationContextRequestMatcherTests {
 		StaticWebApplicationContext context = createWebApplicationContext();
 		Supplier<ExistingBean> supplier = new TestApplicationContextRequestMatcher<>(
 				ExistingBean.class).callMatchesAndReturnProvidedContext(context);
-		this.thrown.expect(NoSuchBeanDefinitionException.class);
-		supplier.get();
+		assertThatExceptionOfType(NoSuchBeanDefinitionException.class)
+				.isThrownBy(supplier::get);
 	}
 
 	private StaticWebApplicationContext createWebApplicationContext() {

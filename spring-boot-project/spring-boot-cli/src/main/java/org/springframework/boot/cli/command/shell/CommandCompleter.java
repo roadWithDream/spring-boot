@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -127,12 +127,7 @@ public class CommandCompleter extends StringsCompleter {
 		private final String usage;
 
 		OptionHelpLine(OptionHelp optionHelp) {
-			StringBuilder options = new StringBuilder();
-			for (String option : optionHelp.getOptions()) {
-				options.append((options.length() != 0) ? ", " : "");
-				options.append(option);
-			}
-			this.options = options.toString();
+			this.options = String.join(", ", optionHelp.getOptions());
 			this.usage = optionHelp.getUsageHelp();
 		}
 

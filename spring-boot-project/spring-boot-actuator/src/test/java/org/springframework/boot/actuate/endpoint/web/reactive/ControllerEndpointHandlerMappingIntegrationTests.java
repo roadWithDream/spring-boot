@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,10 +22,9 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.boot.actuate.endpoint.web.EndpointMapping;
-import org.springframework.boot.actuate.endpoint.web.PathMapper;
 import org.springframework.boot.actuate.endpoint.web.annotation.ControllerEndpointDiscoverer;
 import org.springframework.boot.actuate.endpoint.web.annotation.ControllerEndpointsSupplier;
 import org.springframework.boot.actuate.endpoint.web.annotation.RestControllerEndpoint;
@@ -109,7 +108,7 @@ public class ControllerEndpointHandlerMappingIntegrationTests {
 				.responseTimeout(Duration.ofMinutes(2)).build();
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@ImportAutoConfiguration({ JacksonAutoConfiguration.class,
 			HttpMessageConvertersAutoConfiguration.class,
 			WebFluxAutoConfiguration.class })
@@ -128,8 +127,8 @@ public class ControllerEndpointHandlerMappingIntegrationTests {
 		@Bean
 		public ControllerEndpointDiscoverer webEndpointDiscoverer(
 				ApplicationContext applicationContext) {
-			return new ControllerEndpointDiscoverer(applicationContext,
-					PathMapper.useEndpointId(), Collections.emptyList());
+			return new ControllerEndpointDiscoverer(applicationContext, null,
+					Collections.emptyList());
 		}
 
 		@Bean

@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -57,8 +57,7 @@ class MapBinder extends AggregateBinder<Map<Object, Object>> {
 		Map<Object, Object> map = CollectionFactory.createMap((target.getValue() != null)
 				? Map.class : target.getType().resolve(Object.class), 0);
 		Bindable<?> resolvedTarget = resolveTarget(target);
-		boolean hasDescendants = getContext().streamSources().anyMatch((source) -> source
-				.containsDescendantOf(name) == ConfigurationPropertyState.PRESENT);
+		boolean hasDescendants = hasDescendants(name);
 		for (ConfigurationPropertySource source : getContext().getSources()) {
 			if (!ConfigurationPropertyName.EMPTY.equals(name)) {
 				ConfigurationProperty property = source.getConfigurationProperty(name);
@@ -71,6 +70,15 @@ class MapBinder extends AggregateBinder<Map<Object, Object>> {
 			new EntryBinder(name, resolvedTarget, elementBinder).bindEntries(source, map);
 		}
 		return map.isEmpty() ? null : map;
+	}
+
+	private boolean hasDescendants(ConfigurationPropertyName name) {
+		for (ConfigurationPropertySource source : getContext().getSources()) {
+			if (source.containsDescendantOf(name) == ConfigurationPropertyState.PRESENT) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private Bindable<?> resolveTarget(Bindable<?> target) {

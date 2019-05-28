@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2017 the original author or authors.
+ * Copyright 2012-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,6 +22,7 @@ import org.junit.Test;
 
 import org.springframework.boot.web.servlet.mock.MockFilter;
 
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 
@@ -45,23 +46,24 @@ public class FilterRegistrationBeanTests extends AbstractFilterRegistrationBeanT
 	@Test
 	public void setFilterMustNotBeNull() throws Exception {
 		FilterRegistrationBean<Filter> bean = new FilterRegistrationBean<>();
-		this.thrown.expect(IllegalArgumentException.class);
-		this.thrown.expectMessage("Filter must not be null");
-		bean.onStartup(this.servletContext);
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> bean.onStartup(this.servletContext))
+				.withMessageContaining("Filter must not be null");
 	}
 
 	@Test
 	public void constructFilterMustNotBeNull() {
-		this.thrown.expect(IllegalArgumentException.class);
-		this.thrown.expectMessage("Filter must not be null");
-		new FilterRegistrationBean<>(null);
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new FilterRegistrationBean<>(null))
+				.withMessageContaining("Filter must not be null");
 	}
 
 	@Test
 	public void createServletRegistrationBeanMustNotBeNull() {
-		this.thrown.expect(IllegalArgumentException.class);
-		this.thrown.expectMessage("ServletRegistrationBeans must not be null");
-		new FilterRegistrationBean<>(this.filter, (ServletRegistrationBean[]) null);
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new FilterRegistrationBean<>(this.filter,
+						(ServletRegistrationBean[]) null))
+				.withMessageContaining("ServletRegistrationBeans must not be null");
 	}
 
 	@Override

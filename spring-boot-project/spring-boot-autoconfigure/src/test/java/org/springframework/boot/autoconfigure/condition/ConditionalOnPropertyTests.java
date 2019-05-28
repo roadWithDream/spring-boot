@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2017 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,11 +20,10 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.function.Consumer;
 
-import org.junit.After;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -36,11 +35,10 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.StandardEnvironment;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.containsString;
-import static org.junit.internal.matchers.ThrowableMessageMatcher.hasMessage;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 /**
- * Tests for {@link ConditionalOnProperty}.
+ * Tests for {@link ConditionalOnProperty @ConditionalOnProperty}.
  *
  * @author Maciej Walkowiak
  * @author Stephane Nicoll
@@ -49,14 +47,11 @@ import static org.junit.internal.matchers.ThrowableMessageMatcher.hasMessage;
  */
 public class ConditionalOnPropertyTests {
 
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-
 	private ConfigurableApplicationContext context;
 
 	private ConfigurableEnvironment environment = new StandardEnvironment();
 
-	@After
+	@AfterEach
 	public void tearDown() {
 		if (this.context != null) {
 			this.context.close();
@@ -205,18 +200,22 @@ public class ConditionalOnPropertyTests {
 
 	@Test
 	public void nameOrValueMustBeSpecified() {
-		this.thrown.expect(IllegalStateException.class);
-		this.thrown.expectCause(hasMessage(containsString("The name or "
-				+ "value attribute of @ConditionalOnProperty must be specified")));
-		load(NoNameOrValueAttribute.class, "some.property");
+		assertThatIllegalStateException()
+				.isThrownBy(() -> load(NoNameOrValueAttribute.class, "some.property"))
+				.satisfies(causeMessageContaining(
+						"The name or value attribute of @ConditionalOnProperty must be specified"));
 	}
 
 	@Test
 	public void nameAndValueMustNotBeSpecified() {
-		this.thrown.expect(IllegalStateException.class);
-		this.thrown.expectCause(hasMessage(containsString("The name and "
-				+ "value attributes of @ConditionalOnProperty are exclusive")));
-		load(NameAndValueAttribute.class, "some.property");
+		assertThatIllegalStateException()
+				.isThrownBy(() -> load(NameAndValueAttribute.class, "some.property"))
+				.satisfies(causeMessageContaining(
+						"The name and value attributes of @ConditionalOnProperty are exclusive"));
+	}
+
+	private <T extends Exception> Consumer<T> causeMessageContaining(String message) {
+		return (ex) -> assertThat(ex.getCause()).hasMessageContaining(message);
 	}
 
 	@Test
@@ -262,7 +261,7 @@ public class ConditionalOnPropertyTests {
 				.web(WebApplicationType.NONE).run();
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@ConditionalOnProperty(name = { "property1", "property2" })
 	protected static class MultiplePropertiesRequiredConfiguration {
 
@@ -273,7 +272,7 @@ public class ConditionalOnPropertyTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@ConditionalOnProperty(prefix = "spring.", name = "the-relaxed-property")
 	protected static class RelaxedPropertiesRequiredConfiguration {
 
@@ -284,7 +283,7 @@ public class ConditionalOnPropertyTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@ConditionalOnProperty(prefix = "spring", name = "property")
 	protected static class RelaxedPropertiesRequiredConfigurationWithShortPrefix {
 
@@ -295,9 +294,10 @@ public class ConditionalOnPropertyTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	// i.e ${simple.myProperty:true}
-	@ConditionalOnProperty(prefix = "simple", name = "my-property", havingValue = "true", matchIfMissing = true)
+	@ConditionalOnProperty(prefix = "simple", name = "my-property", havingValue = "true",
+			matchIfMissing = true)
 	static class EnabledIfNotConfiguredOtherwiseConfig {
 
 		@Bean
@@ -307,9 +307,10 @@ public class ConditionalOnPropertyTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	// i.e ${simple.myProperty:false}
-	@ConditionalOnProperty(prefix = "simple", name = "my-property", havingValue = "true", matchIfMissing = false)
+	@ConditionalOnProperty(prefix = "simple", name = "my-property", havingValue = "true",
+			matchIfMissing = false)
 	static class DisabledIfNotConfiguredOtherwiseConfig {
 
 		@Bean
@@ -319,7 +320,7 @@ public class ConditionalOnPropertyTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@ConditionalOnProperty(prefix = "simple", name = "my-property", havingValue = "bar")
 	static class SimpleValueConfig {
 
@@ -330,8 +331,9 @@ public class ConditionalOnPropertyTests {
 
 	}
 
-	@Configuration
-	@ConditionalOnProperty(name = "simple.myProperty", havingValue = "bar", matchIfMissing = true)
+	@Configuration(proxyBeanMethods = false)
+	@ConditionalOnProperty(name = "simple.myProperty", havingValue = "bar",
+			matchIfMissing = true)
 	static class DefaultValueConfig {
 
 		@Bean
@@ -341,7 +343,7 @@ public class ConditionalOnPropertyTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@ConditionalOnProperty(prefix = "simple", name = "my-property", havingValue = "bar")
 	static class PrefixValueConfig {
 
@@ -352,9 +354,9 @@ public class ConditionalOnPropertyTests {
 
 	}
 
-	@Configuration
-	@ConditionalOnProperty(prefix = "simple", name = { "my-property",
-			"my-another-property" }, havingValue = "bar")
+	@Configuration(proxyBeanMethods = false)
+	@ConditionalOnProperty(prefix = "simple",
+			name = { "my-property", "my-another-property" }, havingValue = "bar")
 	static class MultiValuesConfig {
 
 		@Bean
@@ -364,7 +366,7 @@ public class ConditionalOnPropertyTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@ConditionalOnProperty("some.property")
 	protected static class ValueAttribute {
 
@@ -375,7 +377,7 @@ public class ConditionalOnPropertyTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@ConditionalOnProperty
 	protected static class NoNameOrValueAttribute {
 
@@ -386,7 +388,7 @@ public class ConditionalOnPropertyTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@ConditionalOnProperty(value = "x", name = "y")
 	protected static class NameAndValueAttribute {
 
@@ -397,7 +399,7 @@ public class ConditionalOnPropertyTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@ConditionalOnMyFeature
 	protected static class MetaAnnotation {
 
@@ -408,9 +410,10 @@ public class ConditionalOnPropertyTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@ConditionalOnMyFeature
-	@ConditionalOnProperty(prefix = "my.other.feature", name = "enabled", havingValue = "true", matchIfMissing = false)
+	@ConditionalOnProperty(prefix = "my.other.feature", name = "enabled",
+			havingValue = "true", matchIfMissing = false)
 	protected static class MetaAnnotationAndDirectAnnotation {
 
 		@Bean
@@ -422,7 +425,8 @@ public class ConditionalOnPropertyTests {
 
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target({ ElementType.TYPE, ElementType.METHOD })
-	@ConditionalOnProperty(prefix = "my.feature", name = "enabled", havingValue = "true", matchIfMissing = false)
+	@ConditionalOnProperty(prefix = "my.feature", name = "enabled", havingValue = "true",
+			matchIfMissing = false)
 	public @interface ConditionalOnMyFeature {
 
 	}

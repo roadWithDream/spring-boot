@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,7 +19,7 @@ package org.springframework.boot.autoconfigure.jms.activemq;
 import javax.jms.ConnectionFactory;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.messaginghub.pooled.jms.JmsPoolConnectionFactory;
 
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -28,7 +28,6 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jms.connection.CachingConnectionFactory;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.util.StringUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -82,10 +81,8 @@ public class ActiveMQAutoConfigurationTests {
 							.getBean(CachingConnectionFactory.class);
 					assertThat(connectionFactory.getTargetConnectionFactory())
 							.isInstanceOf(ActiveMQConnectionFactory.class);
-					assertThat(ReflectionTestUtils.getField(connectionFactory,
-							"cacheConsumers")).isEqualTo(false);
-					assertThat(ReflectionTestUtils.getField(connectionFactory,
-							"cacheProducers")).isEqualTo(true);
+					assertThat(connectionFactory.isCacheConsumers()).isFalse();
+					assertThat(connectionFactory.isCacheProducers()).isTrue();
 					assertThat(connectionFactory.getSessionCacheSize()).isEqualTo(1);
 				});
 	}
@@ -101,10 +98,8 @@ public class ActiveMQAutoConfigurationTests {
 					assertThat(context).hasSingleBean(CachingConnectionFactory.class);
 					CachingConnectionFactory connectionFactory = context
 							.getBean(CachingConnectionFactory.class);
-					assertThat(ReflectionTestUtils.getField(connectionFactory,
-							"cacheConsumers")).isEqualTo(true);
-					assertThat(ReflectionTestUtils.getField(connectionFactory,
-							"cacheProducers")).isEqualTo(false);
+					assertThat(connectionFactory.isCacheConsumers()).isTrue();
+					assertThat(connectionFactory.isCacheProducers()).isFalse();
 					assertThat(connectionFactory.getSessionCacheSize()).isEqualTo(10);
 				});
 	}
@@ -223,22 +218,6 @@ public class ActiveMQAutoConfigurationTests {
 	}
 
 	@Test
-	@Deprecated
-	public void customPoolConnectionFactoryIsAppliedWithDeprecatedSettings() {
-		this.contextRunner.withUserConfiguration(EmptyConfiguration.class)
-				.withPropertyValues("spring.activemq.pool.enabled=true",
-						"spring.activemq.pool.maximumActiveSessionPerConnection=1024")
-				.run((context) -> {
-					assertThat(context.getBeansOfType(JmsPoolConnectionFactory.class))
-							.hasSize(1);
-					JmsPoolConnectionFactory connectionFactory = context
-							.getBean(JmsPoolConnectionFactory.class);
-					assertThat(connectionFactory.getMaxSessionsPerConnection())
-							.isEqualTo(1024);
-				});
-	}
-
-	@Test
 	public void poolConnectionFactoryConfiguration() {
 		this.contextRunner.withUserConfiguration(EmptyConfiguration.class)
 				.withPropertyValues("spring.activemq.pool.enabled:true")
@@ -250,12 +229,12 @@ public class ActiveMQAutoConfigurationTests {
 				});
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class EmptyConfiguration {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class CustomConnectionFactoryConfiguration {
 
 		@Bean
@@ -265,7 +244,7 @@ public class ActiveMQAutoConfigurationTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class CustomizerConfiguration {
 
 		@Bean

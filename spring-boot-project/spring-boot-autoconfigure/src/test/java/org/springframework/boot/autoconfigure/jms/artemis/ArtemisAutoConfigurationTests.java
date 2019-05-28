@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,6 +18,8 @@ package org.springframework.boot.autoconfigure.jms.artemis;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.UUID;
 
 import javax.jms.ConnectionFactory;
@@ -37,9 +39,8 @@ import org.apache.activemq.artemis.jms.server.config.impl.JMSConfigurationImpl;
 import org.apache.activemq.artemis.jms.server.config.impl.JMSQueueConfigurationImpl;
 import org.apache.activemq.artemis.jms.server.config.impl.TopicConfigurationImpl;
 import org.apache.activemq.artemis.jms.server.embedded.EmbeddedJMS;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.messaginghub.pooled.jms.JmsPoolConnectionFactory;
 
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -53,7 +54,6 @@ import org.springframework.jms.core.JmsTemplate;
 import org.springframework.jms.core.SessionCallback;
 import org.springframework.jms.support.destination.DestinationResolver;
 import org.springframework.jms.support.destination.DynamicDestinationResolver;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -64,9 +64,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Stephane Nicoll
  */
 public class ArtemisAutoConfigurationTests {
-
-	@Rule
-	public final TemporaryFolder folder = new TemporaryFolder();
 
 	private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
 			.withConfiguration(AutoConfigurations.of(ArtemisAutoConfiguration.class,
@@ -82,10 +79,8 @@ public class ArtemisAutoConfigurationTests {
 							.getBean(CachingConnectionFactory.class);
 					assertThat(connectionFactory.getTargetConnectionFactory())
 							.isInstanceOf(ActiveMQConnectionFactory.class);
-					assertThat(ReflectionTestUtils.getField(connectionFactory,
-							"cacheConsumers")).isEqualTo(false);
-					assertThat(ReflectionTestUtils.getField(connectionFactory,
-							"cacheProducers")).isEqualTo(true);
+					assertThat(connectionFactory.isCacheConsumers()).isFalse();
+					assertThat(connectionFactory.isCacheProducers()).isTrue();
 					assertThat(connectionFactory.getSessionCacheSize()).isEqualTo(1);
 				});
 	}
@@ -101,10 +96,8 @@ public class ArtemisAutoConfigurationTests {
 					assertThat(context).hasSingleBean(CachingConnectionFactory.class);
 					CachingConnectionFactory connectionFactory = context
 							.getBean(CachingConnectionFactory.class);
-					assertThat(ReflectionTestUtils.getField(connectionFactory,
-							"cacheConsumers")).isEqualTo(true);
-					assertThat(ReflectionTestUtils.getField(connectionFactory,
-							"cacheProducers")).isEqualTo(false);
+					assertThat(connectionFactory.isCacheConsumers()).isTrue();
+					assertThat(connectionFactory.isCacheProducers()).isFalse();
 					assertThat(connectionFactory.getSessionCacheSize()).isEqualTo(10);
 				});
 	}
@@ -278,8 +271,8 @@ public class ArtemisAutoConfigurationTests {
 	}
 
 	@Test
-	public void embeddedWithPersistentMode() throws IOException {
-		File dataFolder = this.folder.newFolder();
+	public void embeddedWithPersistentMode(@TempDir Path temp) throws IOException {
+		File dataFolder = Files.createTempDirectory(temp, null).toFile();
 		final String messageId = UUID.randomUUID().toString();
 		// Start the server and post a message to some queue
 		this.contextRunner.withUserConfiguration(EmptyConfiguration.class)
@@ -407,21 +400,6 @@ public class ArtemisAutoConfigurationTests {
 	}
 
 	@Test
-	public void customPoolConnectionFactoryIsAppliedWithDeprecatedSettings() {
-		this.contextRunner
-				.withPropertyValues("spring.artemis.pool.enabled=true",
-						"spring.artemis.pool.maximumActiveSessionPerConnection=1024")
-				.run((context) -> {
-					assertThat(context.getBeansOfType(JmsPoolConnectionFactory.class))
-							.hasSize(1);
-					JmsPoolConnectionFactory connectionFactory = context
-							.getBean(JmsPoolConnectionFactory.class);
-					assertThat(connectionFactory.getMaxSessionsPerConnection())
-							.isEqualTo(1024);
-				});
-	}
-
-	@Test
 	public void poolConnectionFactoryConfiguration() {
 		this.contextRunner.withPropertyValues("spring.artemis.pool.enabled:true")
 				.run((context) -> {
@@ -509,12 +487,12 @@ public class ArtemisAutoConfigurationTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	protected static class EmptyConfiguration {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	protected static class DestinationConfiguration {
 
 		@Bean
@@ -537,7 +515,7 @@ public class ArtemisAutoConfigurationTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	protected static class CustomJmsConfiguration {
 
 		@Bean
@@ -552,7 +530,7 @@ public class ArtemisAutoConfigurationTests {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	protected static class CustomArtemisConfiguration {
 
 		@Bean

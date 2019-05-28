@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,6 +16,8 @@
 
 package org.springframework.boot.context.properties.bind;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -25,20 +27,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.hamcrest.Matchers;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
+import org.springframework.boot.context.properties.bind.JavaBeanBinder.Bean;
+import org.springframework.boot.context.properties.bind.JavaBeanBinder.BeanProperty;
 import org.springframework.boot.context.properties.bind.handler.IgnoreErrorsBindHandler;
 import org.springframework.boot.context.properties.source.ConfigurationPropertyName;
 import org.springframework.boot.context.properties.source.ConfigurationPropertySource;
 import org.springframework.boot.context.properties.source.MockConfigurationPropertySource;
 import org.springframework.boot.convert.Delimiter;
+import org.springframework.core.ResolvableType;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.entry;
 
 /**
@@ -46,11 +49,9 @@ import static org.assertj.core.api.Assertions.entry;
  *
  * @author Phillip Webb
  * @author Madhura Bhave
+ * @author Andy Wilkinson
  */
 public class JavaBeanBinderTests {
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
 
 	private List<ConfigurationPropertySource> sources = new ArrayList<>();
 
@@ -181,10 +182,10 @@ public class JavaBeanBinderTests {
 		source.put("foo.list[0]", "foo-bar");
 		source.put("foo.list[2]", "bar-baz");
 		this.sources.add(source);
-		this.thrown.expect(BindException.class);
-		this.thrown.expectCause(
-				Matchers.instanceOf(UnboundConfigurationPropertiesException.class));
-		this.binder.bind("foo", Bindable.of(ExampleListBean.class));
+		assertThatExceptionOfType(BindException.class)
+				.isThrownBy(
+						() -> this.binder.bind("foo", Bindable.of(ExampleListBean.class)))
+				.withCauseInstanceOf(UnboundConfigurationPropertiesException.class);
 	}
 
 	@Test
@@ -326,9 +327,8 @@ public class JavaBeanBinderTests {
 		MockConfigurationPropertySource source = new MockConfigurationPropertySource();
 		source.put("foo.nested.foo", "bar");
 		this.sources.add(source);
-		this.thrown.expect(BindException.class);
-		this.binder.bind("foo",
-				Bindable.of(ExampleImmutableNestedBeanWithoutSetter.class));
+		assertThatExceptionOfType(BindException.class).isThrownBy(() -> this.binder
+				.bind("foo", Bindable.of(ExampleImmutableNestedBeanWithoutSetter.class)));
 	}
 
 	@Test
@@ -354,13 +354,15 @@ public class JavaBeanBinderTests {
 	}
 
 	@Test
-	public void bindToClassWhenNoDefaultConstructorShouldReturnUnbound() {
+	public void bindToClassWhenNoDefaultConstructorShouldBind() {
 		MockConfigurationPropertySource source = new MockConfigurationPropertySource();
 		source.put("foo.value", "bar");
 		this.sources.add(source);
 		BindResult<ExampleWithNonDefaultConstructor> bean = this.binder.bind("foo",
 				Bindable.of(ExampleWithNonDefaultConstructor.class));
-		assertThat(bean.isBound()).isFalse();
+		assertThat(bean.isBound()).isTrue();
+		ExampleWithNonDefaultConstructor boundBean = bean.get();
+		assertThat(boundBean.getValue()).isEqualTo("bar");
 	}
 
 	@Test
@@ -392,8 +394,8 @@ public class JavaBeanBinderTests {
 	@Test
 	public void bindToClassWhenPropertyCannotBeConvertedShouldThrowException() {
 		this.sources.add(new MockConfigurationPropertySource("foo.int-value", "foo"));
-		this.thrown.expect(BindException.class);
-		this.binder.bind("foo", Bindable.of(ExampleValueBean.class));
+		assertThatExceptionOfType(BindException.class).isThrownBy(
+				() -> this.binder.bind("foo", Bindable.of(ExampleValueBean.class)));
 	}
 
 	@Test
@@ -496,6 +498,69 @@ public class JavaBeanBinderTests {
 				.bind("foo", Bindable.of(ExampleWithStaticAccessors.class)).get();
 		assertThat(ExampleWithStaticAccessors.name).isNull();
 		assertThat(bean.getCounter()).isEqualTo(42);
+	}
+
+	@Test
+	public void bindToClassShouldCacheWithGenerics() {
+		// gh-16821
+		MockConfigurationPropertySource source = new MockConfigurationPropertySource();
+		source.put("foo.integers[a].value", "1");
+		source.put("foo.booleans[b].value", "true");
+		this.sources.add(source);
+		ExampleWithGenericMap bean = this.binder
+				.bind("foo", Bindable.of(ExampleWithGenericMap.class)).get();
+		assertThat(bean.getIntegers().get("a").getValue()).isEqualTo(1);
+		assertThat(bean.getBooleans().get("b").getValue()).isEqualTo(true);
+	}
+
+	public void bindToClassWithOverloadedSetterShouldUseSetterThatMatchesField() {
+		// gh-16206
+		MockConfigurationPropertySource source = new MockConfigurationPropertySource();
+		source.put("foo.property", "some string");
+		this.sources.add(source);
+		PropertyWithOverloadedSetter bean = this.binder
+				.bind("foo", Bindable.of(PropertyWithOverloadedSetter.class)).get();
+		assertThat(bean.getProperty()).isEqualTo("some string");
+	}
+
+	@Test
+	public void beanProperiesPreferMatchingType() {
+		// gh-16206
+
+		ResolvableType type = ResolvableType.forClass(PropertyWithOverloadedSetter.class);
+		Bean<PropertyWithOverloadedSetter> bean = new Bean<PropertyWithOverloadedSetter>(
+				type, type.resolve()) {
+
+			@Override
+			protected void addProperties(Method[] declaredMethods,
+					Field[] declaredFields) {
+				// We override here because we need a specific order of the declared
+				// methods and the JVM doesn't give us one
+				int intSetter = -1;
+				int stringSetter = -1;
+				for (int i = 0; i < declaredMethods.length; i++) {
+					Method method = declaredMethods[i];
+					if (method.getName().equals("setProperty")) {
+						if (method.getParameters()[0].getType().equals(int.class)) {
+							intSetter = i;
+						}
+						else {
+							stringSetter = i;
+						}
+					}
+				}
+				if (intSetter > stringSetter) {
+					Method method = declaredMethods[intSetter];
+					declaredMethods[intSetter] = declaredMethods[stringSetter];
+					declaredMethods[stringSetter] = method;
+				}
+				super.addProperties(declaredMethods, declaredFields);
+			}
+
+		};
+		BeanProperty property = bean.getProperties().get("property");
+		PropertyWithOverloadedSetter target = new PropertyWithOverloadedSetter();
+		property.setValue(() -> target, "some string");
 	}
 
 	public static class ExampleValueBean {
@@ -914,6 +979,54 @@ public class JavaBeanBinderTests {
 
 		public void setValue(Class<? extends Throwable> value) {
 			this.value = value;
+		}
+
+	}
+
+	public static class ExampleWithGenericMap {
+
+		private final Map<String, GenericValue<Integer>> integers = new LinkedHashMap<>();
+
+		private final Map<String, GenericValue<Boolean>> booleans = new LinkedHashMap<>();
+
+		public Map<String, GenericValue<Integer>> getIntegers() {
+			return this.integers;
+		}
+
+		public Map<String, GenericValue<Boolean>> getBooleans() {
+			return this.booleans;
+		}
+
+	}
+
+	public static class GenericValue<T> {
+
+		private T value;
+
+		public T getValue() {
+			return this.value;
+		}
+
+		public void setValue(T value) {
+			this.value = value;
+		}
+
+	}
+
+	public static class PropertyWithOverloadedSetter {
+
+		private String property;
+
+		public void setProperty(int property) {
+			this.property = String.valueOf(property);
+		}
+
+		public void setProperty(String property) {
+			this.property = property;
+		}
+
+		public String getProperty() {
+			return this.property;
 		}
 
 	}

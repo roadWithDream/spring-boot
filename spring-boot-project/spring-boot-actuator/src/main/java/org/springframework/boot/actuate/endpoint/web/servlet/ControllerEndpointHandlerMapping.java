@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,7 +19,6 @@ package org.springframework.boot.actuate.endpoint.web.servlet;
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -95,7 +94,7 @@ public class ControllerEndpointHandlerMapping extends RequestMappingHandlerMappi
 			ExposableControllerEndpoint endpoint, RequestMappingInfo mapping) {
 		Set<String> patterns = mapping.getPatternsCondition().getPatterns();
 		if (patterns.isEmpty()) {
-			patterns = new HashSet<>(Collections.singletonList(""));
+			patterns = Collections.singleton("");
 		}
 		String[] endpointMappedPatterns = patterns.stream()
 				.map((pattern) -> getEndpointMappedPattern(endpoint, pattern))
@@ -117,6 +116,11 @@ public class ControllerEndpointHandlerMapping extends RequestMappingHandlerMappi
 				mapping.getParamsCondition(), mapping.getHeadersCondition(),
 				mapping.getConsumesCondition(), mapping.getProducesCondition(),
 				mapping.getCustomCondition());
+	}
+
+	@Override
+	protected boolean hasCorsConfigurationSource(Object handler) {
+		return this.corsConfiguration != null;
 	}
 
 	@Override

@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2017 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,14 +17,13 @@
 package org.springframework.boot.actuate.autoconfigure.cloudfoundry.servlet;
 
 import java.util.Map;
+import java.util.function.Consumer;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.boot.actuate.autoconfigure.cloudfoundry.AccessLevel;
-import org.springframework.boot.actuate.autoconfigure.cloudfoundry.AuthorizationExceptionMatcher;
+import org.springframework.boot.actuate.autoconfigure.cloudfoundry.CloudFoundryAuthorizationException;
 import org.springframework.boot.actuate.autoconfigure.cloudfoundry.CloudFoundryAuthorizationException.Reason;
 import org.springframework.boot.test.web.client.MockServerRestTemplateCustomizer;
 import org.springframework.boot.web.client.RestTemplateBuilder;
@@ -35,6 +34,7 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
@@ -49,21 +49,18 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
  */
 public class CloudFoundrySecurityServiceTests {
 
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-
-	private static final String CLOUD_CONTROLLER = "http://my-cloud-controller.com";
+	private static final String CLOUD_CONTROLLER = "https://my-cloud-controller.com";
 
 	private static final String CLOUD_CONTROLLER_PERMISSIONS = CLOUD_CONTROLLER
 			+ "/v2/apps/my-app-id/permissions";
 
-	private static final String UAA_URL = "http://my-uaa.com";
+	private static final String UAA_URL = "https://my-uaa.com";
 
 	private CloudFoundrySecurityService securityService;
 
 	private MockRestServiceServer server;
 
-	@Before
+	@BeforeEach
 	public void setup() {
 		MockServerRestTemplateCustomizer mockServerCustomizer = new MockServerRestTemplateCustomizer();
 		RestTemplateBuilder builder = new RestTemplateBuilder(mockServerCustomizer);
@@ -123,9 +120,9 @@ public class CloudFoundrySecurityServiceTests {
 		this.server.expect(requestTo(CLOUD_CONTROLLER_PERMISSIONS))
 				.andExpect(header("Authorization", "bearer my-access-token"))
 				.andRespond(withUnauthorizedRequest());
-		this.thrown
-				.expect(AuthorizationExceptionMatcher.withReason(Reason.INVALID_TOKEN));
-		this.securityService.getAccessLevel("my-access-token", "my-app-id");
+		assertThatExceptionOfType(CloudFoundryAuthorizationException.class).isThrownBy(
+				() -> this.securityService.getAccessLevel("my-access-token", "my-app-id"))
+				.satisfies(reasonRequirement(Reason.INVALID_TOKEN));
 	}
 
 	@Test
@@ -133,9 +130,9 @@ public class CloudFoundrySecurityServiceTests {
 		this.server.expect(requestTo(CLOUD_CONTROLLER_PERMISSIONS))
 				.andExpect(header("Authorization", "bearer my-access-token"))
 				.andRespond(withStatus(HttpStatus.FORBIDDEN));
-		this.thrown
-				.expect(AuthorizationExceptionMatcher.withReason(Reason.ACCESS_DENIED));
-		this.securityService.getAccessLevel("my-access-token", "my-app-id");
+		assertThatExceptionOfType(CloudFoundryAuthorizationException.class).isThrownBy(
+				() -> this.securityService.getAccessLevel("my-access-token", "my-app-id"))
+				.satisfies(reasonRequirement(Reason.ACCESS_DENIED));
 	}
 
 	@Test
@@ -143,15 +140,15 @@ public class CloudFoundrySecurityServiceTests {
 		this.server.expect(requestTo(CLOUD_CONTROLLER_PERMISSIONS))
 				.andExpect(header("Authorization", "bearer my-access-token"))
 				.andRespond(withServerError());
-		this.thrown.expect(
-				AuthorizationExceptionMatcher.withReason(Reason.SERVICE_UNAVAILABLE));
-		this.securityService.getAccessLevel("my-access-token", "my-app-id");
+		assertThatExceptionOfType(CloudFoundryAuthorizationException.class).isThrownBy(
+				() -> this.securityService.getAccessLevel("my-access-token", "my-app-id"))
+				.satisfies(reasonRequirement(Reason.SERVICE_UNAVAILABLE));
 	}
 
 	@Test
 	public void fetchTokenKeysWhenSuccessfulShouldReturnListOfKeysFromUAA() {
 		this.server.expect(requestTo(CLOUD_CONTROLLER + "/info"))
-				.andRespond(withSuccess("{\"token_endpoint\":\"http://my-uaa.com\"}",
+				.andRespond(withSuccess("{\"token_endpoint\":\"https://my-uaa.com\"}",
 						MediaType.APPLICATION_JSON));
 		String tokenKeyValue = "-----BEGIN PUBLIC KEY-----\n"
 				+ "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0m59l2u9iDnMbrXHfqkO\n"
@@ -188,9 +185,9 @@ public class CloudFoundrySecurityServiceTests {
 				"{\"token_endpoint\":\"" + UAA_URL + "\"}", MediaType.APPLICATION_JSON));
 		this.server.expect(requestTo(UAA_URL + "/token_keys"))
 				.andRespond(withServerError());
-		this.thrown.expect(
-				AuthorizationExceptionMatcher.withReason(Reason.SERVICE_UNAVAILABLE));
-		this.securityService.fetchTokenKeys();
+		assertThatExceptionOfType(CloudFoundryAuthorizationException.class)
+				.isThrownBy(() -> this.securityService.fetchTokenKeys())
+				.satisfies(reasonRequirement(Reason.SERVICE_UNAVAILABLE));
 	}
 
 	@Test
@@ -209,9 +206,14 @@ public class CloudFoundrySecurityServiceTests {
 	public void getUaaUrlWhenCloudControllerUrlIsNotReachableShouldThrowException() {
 		this.server.expect(requestTo(CLOUD_CONTROLLER + "/info"))
 				.andRespond(withServerError());
-		this.thrown.expect(
-				AuthorizationExceptionMatcher.withReason(Reason.SERVICE_UNAVAILABLE));
-		this.securityService.getUaaUrl();
+		assertThatExceptionOfType(CloudFoundryAuthorizationException.class)
+				.isThrownBy(() -> this.securityService.getUaaUrl())
+				.satisfies(reasonRequirement(Reason.SERVICE_UNAVAILABLE));
+	}
+
+	private Consumer<CloudFoundryAuthorizationException> reasonRequirement(
+			Reason reason) {
+		return (ex) -> assertThat(ex.getReason()).isEqualTo(reason);
 	}
 
 }

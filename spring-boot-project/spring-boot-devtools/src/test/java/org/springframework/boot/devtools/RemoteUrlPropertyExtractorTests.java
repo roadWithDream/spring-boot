@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2017 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,9 +18,7 @@ package org.springframework.boot.devtools;
 
 import ch.qos.logback.classic.Logger;
 import org.junit.After;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.boot.SpringApplication;
@@ -29,6 +27,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Configuration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 /**
  * Tests for {@link RemoteUrlPropertyExtractor}.
@@ -36,9 +35,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Phillip Webb
  */
 public class RemoteUrlPropertyExtractorTests {
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
 
 	@After
 	public void preventRunFailuresFromPollutingLoggerContext() {
@@ -48,24 +44,23 @@ public class RemoteUrlPropertyExtractorTests {
 
 	@Test
 	public void missingUrl() {
-		this.thrown.expect(IllegalStateException.class);
-		this.thrown.expectMessage("No remote URL specified");
-		doTest();
+		assertThatIllegalStateException().isThrownBy(this::doTest)
+				.withMessageContaining("No remote URL specified");
 	}
 
 	@Test
 	public void malformedUrl() {
-		this.thrown.expect(IllegalStateException.class);
-		this.thrown.expectMessage("Malformed URL '::://wibble'");
-		doTest("::://wibble");
+		assertThatIllegalStateException().isThrownBy(() -> doTest("::://wibble"))
+				.withMessageContaining("Malformed URL '::://wibble'");
 
 	}
 
 	@Test
 	public void multipleUrls() {
-		this.thrown.expect(IllegalStateException.class);
-		this.thrown.expectMessage("Multiple URLs specified");
-		doTest("http://localhost:8080", "http://localhost:9090");
+		assertThatIllegalStateException()
+				.isThrownBy(
+						() -> doTest("http://localhost:8080", "http://localhost:9090"))
+				.withMessageContaining("Multiple URLs specified");
 	}
 
 	@Test
@@ -91,7 +86,7 @@ public class RemoteUrlPropertyExtractorTests {
 		return application.run(args);
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class Config {
 
 	}

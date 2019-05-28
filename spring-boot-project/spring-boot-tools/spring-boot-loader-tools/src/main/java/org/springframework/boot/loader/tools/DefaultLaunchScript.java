@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,9 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -48,7 +46,7 @@ public class DefaultLaunchScript implements LaunchScript {
 			.compile("\\{\\{(\\w+)(:.*?)?\\}\\}(?!\\})");
 
 	private static final Set<String> FILE_PATH_KEYS = Collections
-			.unmodifiableSet(new HashSet<>(Arrays.asList("inlinedConfScript")));
+			.unmodifiableSet(Collections.singleton("inlinedConfScript"));
 
 	private final String content;
 

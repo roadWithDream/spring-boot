@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2017 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,10 +20,8 @@ import java.util.Collections;
 
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -33,6 +31,7 @@ import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.Status;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
@@ -44,16 +43,13 @@ import static org.mockito.Mockito.mock;
  */
 public class RabbitHealthIndicatorTests {
 
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-
 	@Mock
 	private RabbitTemplate rabbitTemplate;
 
 	@Mock
 	private Channel channel;
 
-	@Before
+	@BeforeEach
 	public void setup() {
 		MockitoAnnotations.initMocks(this);
 		given(this.rabbitTemplate.execute(any())).willAnswer((invocation) -> {
@@ -64,9 +60,9 @@ public class RabbitHealthIndicatorTests {
 
 	@Test
 	public void createWhenRabbitTemplateIsNullShouldThrowException() {
-		this.thrown.expect(IllegalArgumentException.class);
-		this.thrown.expectMessage("RabbitTemplate must not be null");
-		new RabbitHealthIndicator(null);
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new RabbitHealthIndicator(null))
+				.withMessageContaining("RabbitTemplate must not be null");
 	}
 
 	@Test

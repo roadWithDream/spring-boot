@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,9 +19,7 @@ package org.springframework.boot.context.properties.source;
 import java.util.Collections;
 import java.util.Iterator;
 
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.MapPropertySource;
@@ -31,6 +29,7 @@ import org.springframework.core.env.StandardEnvironment;
 import org.springframework.core.env.SystemEnvironmentPropertySource;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
  * Tests for {@link SpringConfigurationPropertySources}.
@@ -40,14 +39,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 public class SpringConfigurationPropertySourcesTests {
 
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-
 	@Test
 	public void createWhenPropertySourcesIsNullShouldThrowException() {
-		this.thrown.expect(IllegalArgumentException.class);
-		this.thrown.expectMessage("Sources must not be null");
-		new SpringConfigurationPropertySources(null);
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new SpringConfigurationPropertySources(null))
+				.withMessageContaining("Sources must not be null");
 	}
 
 	@Test
@@ -105,6 +101,19 @@ public class SpringConfigurationPropertySourcesTests {
 	}
 
 	@Test
+	public void shouldAdaptSystemEnvironmentPropertySourceWithUnderscoreValue() {
+		MutablePropertySources sources = new MutablePropertySources();
+		sources.addLast(new SystemEnvironmentPropertySource(
+				StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME,
+				Collections.singletonMap("_", "1234")));
+		Iterator<ConfigurationPropertySource> iterator = new SpringConfigurationPropertySources(
+				sources).iterator();
+		ConfigurationPropertyName name = ConfigurationPropertyName.of("bar");
+		assertThat(iterator.next().getConfigurationProperty(name)).isNull();
+		assertThat(iterator.hasNext()).isFalse();
+	}
+
+	@Test
 	public void shouldAdaptMultiplePropertySources() {
 		MutablePropertySources sources = new MutablePropertySources();
 		sources.addLast(new SystemEnvironmentPropertySource("system",
@@ -146,7 +155,7 @@ public class SpringConfigurationPropertySourcesTests {
 				new MapPropertySource("baz", Collections.singletonMap("baz", "barf")));
 		SpringConfigurationPropertySources configurationSources = new SpringConfigurationPropertySources(
 				sources);
-		assertThat(configurationSources.iterator()).hasSize(5);
+		assertThat(configurationSources.iterator()).toIterable().hasSize(5);
 	}
 
 	@Test
@@ -154,15 +163,15 @@ public class SpringConfigurationPropertySourcesTests {
 		MutablePropertySources sources = new MutablePropertySources();
 		SpringConfigurationPropertySources configurationSources = new SpringConfigurationPropertySources(
 				sources);
-		assertThat(configurationSources.iterator()).hasSize(0);
+		assertThat(configurationSources.iterator()).toIterable().hasSize(0);
 		MapPropertySource source1 = new MapPropertySource("test1",
 				Collections.singletonMap("a", "b"));
 		sources.addLast(source1);
-		assertThat(configurationSources.iterator()).hasSize(1);
+		assertThat(configurationSources.iterator()).toIterable().hasSize(1);
 		MapPropertySource source2 = new MapPropertySource("test2",
 				Collections.singletonMap("b", "c"));
 		sources.addLast(source2);
-		assertThat(configurationSources.iterator()).hasSize(2);
+		assertThat(configurationSources.iterator()).toIterable().hasSize(2);
 	}
 
 	@Test

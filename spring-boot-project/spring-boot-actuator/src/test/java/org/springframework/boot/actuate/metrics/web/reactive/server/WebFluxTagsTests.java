@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,8 +17,8 @@
 package org.springframework.boot.actuate.metrics.web.reactive.server;
 
 import io.micrometer.core.instrument.Tag;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -36,6 +36,7 @@ import static org.mockito.Mockito.mock;
  * Tests for {@link WebFluxTags}.
  *
  * @author Brian Clozel
+ * @author Michael McFadyen
  */
 public class WebFluxTagsTests {
 
@@ -43,7 +44,7 @@ public class WebFluxTagsTests {
 
 	private PathPatternParser parser = new PathPatternParser();
 
-	@Before
+	@BeforeEach
 	public void setup() {
 		this.exchange = MockServerWebExchange.from(MockServerHttpRequest.get(""));
 	}
@@ -79,8 +80,24 @@ public class WebFluxTagsTests {
 	}
 
 	@Test
-	public void uriTagIsUnknownWhenRequestIsNull() {
-		Tag tag = WebFluxTags.uri(null);
+	public void uriTagValueIsRootWhenRequestHasNoPatternOrPathInfo() {
+		Tag tag = WebFluxTags.uri(this.exchange);
+		assertThat(tag.getValue()).isEqualTo("root");
+	}
+
+	@Test
+	public void uriTagValueIsRootWhenRequestHasNoPatternAndSlashPathInfo() {
+		MockServerHttpRequest request = MockServerHttpRequest.get("/").build();
+		ServerWebExchange exchange = MockServerWebExchange.from(request);
+		Tag tag = WebFluxTags.uri(exchange);
+		assertThat(tag.getValue()).isEqualTo("root");
+	}
+
+	@Test
+	public void uriTagValueIsUnknownWhenRequestHasNoPatternAndNonRootPathInfo() {
+		MockServerHttpRequest request = MockServerHttpRequest.get("/example").build();
+		ServerWebExchange exchange = MockServerWebExchange.from(request);
+		Tag tag = WebFluxTags.uri(exchange);
 		assertThat(tag.getValue()).isEqualTo("UNKNOWN");
 	}
 
@@ -92,6 +109,48 @@ public class WebFluxTagsTests {
 		given(request.getMethodValue()).willReturn("CUSTOM");
 		Tag tag = WebFluxTags.method(exchange);
 		assertThat(tag.getValue()).isEqualTo("CUSTOM");
+	}
+
+	@Test
+	public void outcomeTagIsUnknownWhenResponseStatusIsNull() {
+		this.exchange.getResponse().setStatusCode(null);
+		Tag tag = WebFluxTags.outcome(this.exchange);
+		assertThat(tag.getValue()).isEqualTo("UNKNOWN");
+	}
+
+	@Test
+	public void outcomeTagIsInformationalWhenResponseIs1xx() {
+		this.exchange.getResponse().setStatusCode(HttpStatus.CONTINUE);
+		Tag tag = WebFluxTags.outcome(this.exchange);
+		assertThat(tag.getValue()).isEqualTo("INFORMATIONAL");
+	}
+
+	@Test
+	public void outcomeTagIsSuccessWhenResponseIs2xx() {
+		this.exchange.getResponse().setStatusCode(HttpStatus.OK);
+		Tag tag = WebFluxTags.outcome(this.exchange);
+		assertThat(tag.getValue()).isEqualTo("SUCCESS");
+	}
+
+	@Test
+	public void outcomeTagIsRedirectionWhenResponseIs3xx() {
+		this.exchange.getResponse().setStatusCode(HttpStatus.MOVED_PERMANENTLY);
+		Tag tag = WebFluxTags.outcome(this.exchange);
+		assertThat(tag.getValue()).isEqualTo("REDIRECTION");
+	}
+
+	@Test
+	public void outcomeTagIsClientErrorWhenResponseIs4xx() {
+		this.exchange.getResponse().setStatusCode(HttpStatus.BAD_REQUEST);
+		Tag tag = WebFluxTags.outcome(this.exchange);
+		assertThat(tag.getValue()).isEqualTo("CLIENT_ERROR");
+	}
+
+	@Test
+	public void outcomeTagIsServerErrorWhenResponseIs5xx() {
+		this.exchange.getResponse().setStatusCode(HttpStatus.BAD_GATEWAY);
+		Tag tag = WebFluxTags.outcome(this.exchange);
+		assertThat(tag.getValue()).isEqualTo("SERVER_ERROR");
 	}
 
 }

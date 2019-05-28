@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,9 +18,7 @@ package org.springframework.boot.test.autoconfigure.web.servlet.mockmvc;
 
 import javax.validation.ConstraintViolationException;
 
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,15 +27,16 @@ import org.springframework.boot.web.servlet.error.ErrorAttributes;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.util.NestedServletException;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.CoreMatchers.isA;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Tests for {@link WebMvcTest} when no explicit controller is defined.
+ * Tests for {@link WebMvcTest @WebMvcTest} when no explicit controller is defined.
  *
  * @author Phillip Webb
  * @author Stephane Nicoll
@@ -46,9 +45,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest
 @WithMockUser
 public class WebMvcTestAllControllersIntegrationTests {
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
 
 	@Autowired
 	private MockMvc mvc;
@@ -82,8 +78,9 @@ public class WebMvcTestAllControllersIntegrationTests {
 
 	@Test
 	public void shouldRunValidationFailure() throws Exception {
-		this.thrown.expectCause(isA(ConstraintViolationException.class));
-		this.mvc.perform(get("/three/invalid"));
+		assertThatExceptionOfType(NestedServletException.class)
+				.isThrownBy(() -> this.mvc.perform(get("/three/invalid")))
+				.withCauseInstanceOf(ConstraintViolationException.class);
 	}
 
 	@Test

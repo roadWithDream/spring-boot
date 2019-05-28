@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,17 +22,17 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.gradle.testkit.runner.TaskOutcome;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.TestTemplate;
+import org.junit.jupiter.api.extension.ExtendWith;
 
-import org.springframework.boot.gradle.junit.GradleCompatibilitySuite;
+import org.springframework.boot.gradle.junit.GradleCompatibilityExtension;
 import org.springframework.boot.gradle.testkit.GradleBuild;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -42,38 +42,37 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * @author Andy Wilkinson
  */
-@RunWith(GradleCompatibilitySuite.class)
+@ExtendWith(GradleCompatibilityExtension.class)
 public class ApplicationPluginActionIntegrationTests {
 
-	@Rule
-	public GradleBuild gradleBuild;
+	GradleBuild gradleBuild;
 
-	@Test
+	@TestTemplate
 	public void noBootDistributionWithoutApplicationPluginApplied() {
 		assertThat(this.gradleBuild.build("distributionExists", "-PdistributionName=boot")
 				.getOutput()).contains("boot exists = false");
 	}
 
-	@Test
+	@TestTemplate
 	public void applyingApplicationPluginCreatesBootDistribution() {
 		assertThat(this.gradleBuild.build("distributionExists", "-PdistributionName=boot",
 				"-PapplyApplicationPlugin").getOutput()).contains("boot exists = true");
 	}
 
-	@Test
+	@TestTemplate
 	public void noBootStartScriptsTaskWithoutApplicationPluginApplied() {
 		assertThat(this.gradleBuild.build("taskExists", "-PtaskName=bootStartScripts")
 				.getOutput()).contains("bootStartScripts exists = false");
 	}
 
-	@Test
+	@TestTemplate
 	public void applyingApplicationPluginCreatesBootStartScriptsTask() {
 		assertThat(this.gradleBuild.build("taskExists", "-PtaskName=bootStartScripts",
 				"-PapplyApplicationPlugin").getOutput())
 						.contains("bootStartScripts exists = true");
 	}
 
-	@Test
+	@TestTemplate
 	public void createsBootStartScriptsTaskUsesApplicationPluginsDefaultJvmOpts() {
 		assertThat(this.gradleBuild
 				.build("startScriptsDefaultJvmOpts", "-PapplyApplicationPlugin")
@@ -81,7 +80,7 @@ public class ApplicationPluginActionIntegrationTests {
 						"bootStartScripts defaultJvmOpts = [-Dcom.example.a=alpha, -Dcom.example.b=bravo]");
 	}
 
-	@Test
+	@TestTemplate
 	public void zipDistributionForJarCanBeBuilt() throws IOException {
 		assertThat(
 				this.gradleBuild.build("bootDistZip").task(":bootDistZip").getOutcome())
@@ -96,7 +95,7 @@ public class ApplicationPluginActionIntegrationTests {
 				name + "-boot/bin/" + name + ".bat");
 	}
 
-	@Test
+	@TestTemplate
 	public void tarDistributionForJarCanBeBuilt() throws IOException {
 		assertThat(
 				this.gradleBuild.build("bootDistTar").task(":bootDistTar").getOutcome())
@@ -111,7 +110,7 @@ public class ApplicationPluginActionIntegrationTests {
 				name + "-boot/bin/" + name + ".bat");
 	}
 
-	@Test
+	@TestTemplate
 	public void zipDistributionForWarCanBeBuilt() throws IOException {
 		assertThat(
 				this.gradleBuild.build("bootDistZip").task(":bootDistZip").getOutcome())
@@ -126,7 +125,7 @@ public class ApplicationPluginActionIntegrationTests {
 				name + "-boot/bin/" + name + ".bat");
 	}
 
-	@Test
+	@TestTemplate
 	public void tarDistributionForWarCanBeBuilt() throws IOException {
 		assertThat(
 				this.gradleBuild.build("bootDistTar").task(":bootDistTar").getOutcome())
@@ -141,7 +140,7 @@ public class ApplicationPluginActionIntegrationTests {
 				name + "-boot/bin/" + name + ".bat");
 	}
 
-	@Test
+	@TestTemplate
 	public void applicationNameCanBeUsedToCustomizeDistributionName() throws IOException {
 		assertThat(
 				this.gradleBuild.build("bootDistTar").task(":bootDistTar").getOutcome())
@@ -154,6 +153,26 @@ public class ApplicationPluginActionIntegrationTests {
 				"custom-boot/lib/", "custom-boot/lib/" + name + ".jar",
 				"custom-boot/bin/", "custom-boot/bin/custom",
 				"custom-boot/bin/custom.bat");
+	}
+
+	@TestTemplate
+	public void scriptsHaveCorrectPermissions() throws IOException {
+		assertThat(
+				this.gradleBuild.build("bootDistTar").task(":bootDistTar").getOutcome())
+						.isEqualTo(TaskOutcome.SUCCESS);
+		String name = this.gradleBuild.getProjectDir().getName();
+		File distribution = new File(this.gradleBuild.getProjectDir(),
+				"build/distributions/" + name + "-boot.tar");
+		assertThat(distribution).isFile();
+		tarEntries(distribution, (entry) -> {
+			int filePermissions = entry.getMode() & 0777;
+			if (entry.isFile() && !entry.getName().startsWith(name + "-boot/bin/")) {
+				assertThat(filePermissions).isEqualTo(0644);
+			}
+			else {
+				assertThat(filePermissions).isEqualTo(0755);
+			}
+		});
 	}
 
 	private List<String> zipEntryNames(File distribution) throws IOException {
@@ -177,6 +196,17 @@ public class ApplicationPluginActionIntegrationTests {
 			}
 		}
 		return entryNames;
+	}
+
+	private void tarEntries(File distribution, Consumer<TarArchiveEntry> consumer)
+			throws IOException {
+		try (TarArchiveInputStream input = new TarArchiveInputStream(
+				new FileInputStream(distribution))) {
+			TarArchiveEntry entry;
+			while ((entry = input.getNextTarEntry()) != null) {
+				consumer.accept(entry);
+			}
+		}
 	}
 
 }

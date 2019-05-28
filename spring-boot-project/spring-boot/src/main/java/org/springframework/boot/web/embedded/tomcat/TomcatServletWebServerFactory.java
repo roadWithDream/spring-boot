@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -58,9 +58,11 @@ import org.apache.catalina.webresources.AbstractResourceSet;
 import org.apache.catalina.webresources.EmptyResource;
 import org.apache.catalina.webresources.StandardRoot;
 import org.apache.coyote.AbstractProtocol;
+import org.apache.coyote.ProtocolHandler;
 import org.apache.coyote.http2.Http2Protocol;
 import org.apache.tomcat.util.scan.StandardJarScanFilter;
 
+import org.springframework.boot.util.LambdaSafe;
 import org.springframework.boot.web.server.ErrorPage;
 import org.springframework.boot.web.server.MimeMappings;
 import org.springframework.boot.web.server.WebServer;
@@ -111,14 +113,15 @@ public class TomcatServletWebServerFactory extends AbstractServletWebServerFacto
 
 	private List<Valve> contextValves = new ArrayList<>();
 
-	private List<LifecycleListener> contextLifecycleListeners = new ArrayList<>(
-			Collections.singleton(new AprLifecycleListener()));
+	private List<LifecycleListener> contextLifecycleListeners = getDefaultLifecycleListeners();
 
 	private List<TomcatContextCustomizer> tomcatContextCustomizers = new ArrayList<>();
 
 	private List<TomcatConnectorCustomizer> tomcatConnectorCustomizers = new ArrayList<>();
 
-	private List<Connector> additionalTomcatConnectors = new ArrayList<>();
+	private List<TomcatProtocolHandlerCustomizer<?>> tomcatProtocolHandlerCustomizers = new ArrayList<>();
+
+	private final List<Connector> additionalTomcatConnectors = new ArrayList<>();
 
 	private ResourceLoader resourceLoader;
 
@@ -153,6 +156,13 @@ public class TomcatServletWebServerFactory extends AbstractServletWebServerFacto
 	 */
 	public TomcatServletWebServerFactory(String contextPath, int port) {
 		super(contextPath, port);
+	}
+
+	private static List<LifecycleListener> getDefaultLifecycleListeners() {
+		AprLifecycleListener aprLifecycleListener = new AprLifecycleListener();
+		return AprLifecycleListener.isAprAvailable()
+				? new ArrayList<>(Arrays.asList(aprLifecycleListener))
+				: new ArrayList<>();
 	}
 
 	@Override
@@ -200,6 +210,12 @@ public class TomcatServletWebServerFactory extends AbstractServletWebServerFacto
 		resetDefaultLocaleMapping(context);
 		addLocaleMappings(context);
 		context.setUseRelativeRedirects(false);
+		try {
+			context.setCreateUploadTargets(true);
+		}
+		catch (NoSuchMethodError ex) {
+			// Tomcat is < 8.5.39. Continue.
+		}
 		configureTldSkipPatterns(context);
 		WebappLoader loader = new WebappLoader(context.getParentClassLoader());
 		loader.setLoaderClass(TomcatEmbeddedWebappClassLoader.class.getName());
@@ -291,6 +307,7 @@ public class TomcatServletWebServerFactory extends AbstractServletWebServerFacto
 		if (connector.getProtocolHandler() instanceof AbstractProtocol) {
 			customizeProtocol((AbstractProtocol<?>) connector.getProtocolHandler());
 		}
+		invokeProtocolHandlerCustomizers(connector.getProtocolHandler());
 		if (getUriEncoding() != null) {
 			connector.setURIEncoding(getUriEncoding().name());
 		}
@@ -313,6 +330,14 @@ public class TomcatServletWebServerFactory extends AbstractServletWebServerFacto
 		}
 	}
 
+	@SuppressWarnings("unchecked")
+	private void invokeProtocolHandlerCustomizers(ProtocolHandler protocolHandler) {
+		LambdaSafe
+				.callbacks(TomcatProtocolHandlerCustomizer.class,
+						this.tomcatProtocolHandlerCustomizers, protocolHandler)
+				.invoke((customizer) -> customizer.customize(protocolHandler));
+	}
+
 	private void customizeSsl(Connector connector) {
 		new SslConnectorCustomizer(getSsl(), getSslStoreProvider()).customize(connector);
 		if (getHttp2() != null && getHttp2().isEnabled()) {
@@ -329,8 +354,9 @@ public class TomcatServletWebServerFactory extends AbstractServletWebServerFacto
 			ServletContextInitializer[] initializers) {
 		TomcatStarter starter = new TomcatStarter(initializers);
 		if (context instanceof TomcatEmbeddedContext) {
-			// Should be true
-			((TomcatEmbeddedContext) context).setStarter(starter);
+			TomcatEmbeddedContext embeddedContext = (TomcatEmbeddedContext) context;
+			embeddedContext.setStarter(starter);
+			embeddedContext.setFailCtxIfServletStartFails(true);
 		}
 		context.addServletContainerInitializer(starter, NO_CLASSES);
 		for (LifecycleListener lifecycleListener : this.contextLifecycleListeners) {
@@ -346,6 +372,7 @@ public class TomcatServletWebServerFactory extends AbstractServletWebServerFacto
 			context.addMimeMapping(mapping.getExtension(), mapping.getMimeType());
 		}
 		configureSession(context);
+		new DisableReferenceClearingContextCustomizer().customize(context);
 		for (TomcatContextCustomizer customizer : this.tomcatContextCustomizers) {
 			customizer.customize(context);
 		}
@@ -606,6 +633,45 @@ public class TomcatServletWebServerFactory extends AbstractServletWebServerFacto
 	}
 
 	/**
+	 * Set {@link TomcatProtocolHandlerCustomizer}s that should be applied to the Tomcat
+	 * {@link Connector}. Calling this method will replace any existing customizers.
+	 * @param tomcatProtocolHandlerCustomizer the customizers to set
+	 * @since 2.2.0
+	 */
+	public void setTomcatProtocolHandlerCustomizers(
+			Collection<? extends TomcatProtocolHandlerCustomizer<?>> tomcatProtocolHandlerCustomizer) {
+		Assert.notNull(tomcatProtocolHandlerCustomizer,
+				"TomcatProtocolHandlerCustomizers must not be null");
+		this.tomcatProtocolHandlerCustomizers = new ArrayList<>(
+				tomcatProtocolHandlerCustomizer);
+	}
+
+	/**
+	 * Add {@link TomcatProtocolHandlerCustomizer}s that should be added to the Tomcat
+	 * {@link Connector}.
+	 * @param tomcatProtocolHandlerCustomizers the customizers to add
+	 * @since 2.2.0
+	 */
+	@Override
+	public void addProtocolHandlerCustomizers(
+			TomcatProtocolHandlerCustomizer<?>... tomcatProtocolHandlerCustomizers) {
+		Assert.notNull(tomcatProtocolHandlerCustomizers,
+				"TomcatProtocolHandlerCustomizers must not be null");
+		this.tomcatProtocolHandlerCustomizers
+				.addAll(Arrays.asList(tomcatProtocolHandlerCustomizers));
+	}
+
+	/**
+	 * Returns a mutable collection of the {@link TomcatProtocolHandlerCustomizer}s that
+	 * will be applied to the Tomcat {@link Connector}.
+	 * @return the customizers that will be applied
+	 * @since 2.2.0
+	 */
+	public Collection<TomcatProtocolHandlerCustomizer<?>> getTomcatProtocolHandlerCustomizers() {
+		return this.tomcatProtocolHandlerCustomizers;
+	}
+
+	/**
 	 * Add {@link Connector}s in addition to the default connector, e.g. for SSL or AJP
 	 * @param connectors the connectors to add
 	 */
@@ -653,7 +719,7 @@ public class TomcatServletWebServerFactory extends AbstractServletWebServerFacto
 			if (event.getType().equals(Lifecycle.START_EVENT)) {
 				Context context = (Context) event.getLifecycle();
 				Manager manager = context.getManager();
-				if (manager != null && manager instanceof StandardManager) {
+				if (manager instanceof StandardManager) {
 					((StandardManager) manager).setPathname(null);
 				}
 			}

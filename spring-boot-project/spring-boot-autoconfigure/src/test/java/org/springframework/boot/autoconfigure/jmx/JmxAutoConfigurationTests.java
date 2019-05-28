@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,10 +16,9 @@
 
 package org.springframework.boot.autoconfigure.jmx;
 
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
-import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.boot.autoconfigure.integration.IntegrationAutoConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -37,6 +36,7 @@ import org.springframework.mock.env.MockEnvironment;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 /**
  * Tests for {@link JmxAutoConfiguration}.
@@ -48,7 +48,7 @@ public class JmxAutoConfigurationTests {
 
 	private AnnotationConfigApplicationContext context;
 
-	@After
+	@AfterEach
 	public void tearDown() {
 		if (this.context != null) {
 			this.context.close();
@@ -63,7 +63,8 @@ public class JmxAutoConfigurationTests {
 		this.context = new AnnotationConfigApplicationContext();
 		this.context.register(JmxAutoConfiguration.class);
 		this.context.refresh();
-		assertThat(this.context.getBean(MBeanExporter.class)).isNotNull();
+		assertThatExceptionOfType(NoSuchBeanDefinitionException.class)
+				.isThrownBy(() -> this.context.getBean(MBeanExporter.class));
 	}
 
 	@Test
@@ -77,7 +78,7 @@ public class JmxAutoConfigurationTests {
 		assertThat(this.context.getBean(MBeanExporter.class)).isNotNull();
 	}
 
-	@Test(expected = NoSuchBeanDefinitionException.class)
+	@Test
 	public void testDisabledMBeanExport() {
 		MockEnvironment env = new MockEnvironment();
 		env.setProperty("spring.jmx.enabled", "false");
@@ -85,7 +86,8 @@ public class JmxAutoConfigurationTests {
 		this.context.setEnvironment(env);
 		this.context.register(TestConfiguration.class, JmxAutoConfiguration.class);
 		this.context.refresh();
-		this.context.getBean(MBeanExporter.class);
+		assertThatExceptionOfType(NoSuchBeanDefinitionException.class)
+				.isThrownBy(() -> this.context.getBean(MBeanExporter.class));
 	}
 
 	@Test
@@ -102,10 +104,9 @@ public class JmxAutoConfigurationTests {
 		assertThat(mBeanExporter).isNotNull();
 		MetadataNamingStrategy naming = (MetadataNamingStrategy) ReflectionTestUtils
 				.getField(mBeanExporter, "namingStrategy");
-		assertThat(ReflectionTestUtils.getField(naming, "defaultDomain"))
-				.isEqualTo("my-test-domain");
-		assertThat(ReflectionTestUtils.getField(naming, "ensureUniqueRuntimeObjectNames"))
-				.isEqualTo(true);
+		assertThat(naming).hasFieldOrPropertyWithValue("defaultDomain", "my-test-domain");
+		assertThat(naming).hasFieldOrPropertyWithValue("ensureUniqueRuntimeObjectNames",
+				true);
 	}
 
 	@Test
@@ -140,17 +141,16 @@ public class JmxAutoConfigurationTests {
 		this.context.refresh();
 		IntegrationMBeanExporter mbeanExporter = this.context
 				.getBean(IntegrationMBeanExporter.class);
-		DirectFieldAccessor dfa = new DirectFieldAccessor(mbeanExporter);
-		assertThat(dfa.getPropertyValue("domain")).isEqualTo("foo.my");
+		assertThat(mbeanExporter).hasFieldOrPropertyWithValue("domain", "foo.my");
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@EnableIntegrationMBeanExport(defaultDomain = "foo.my")
 	public static class CustomJmxDomainConfiguration {
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	public static class TestConfiguration {
 
 		@Bean

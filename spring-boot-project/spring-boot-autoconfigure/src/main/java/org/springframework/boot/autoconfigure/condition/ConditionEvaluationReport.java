@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,6 +29,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.annotation.Condition;
 import org.springframework.context.annotation.ConditionContext;
@@ -157,6 +158,20 @@ public final class ConditionEvaluationReport {
 	 */
 	public ConditionEvaluationReport getParent() {
 		return this.parent;
+	}
+
+	/**
+	 * Attempt to find the {@link ConditionEvaluationReport} for the specified bean
+	 * factory.
+	 * @param beanFactory the bean factory (may be {@code null})
+	 * @return the {@link ConditionEvaluationReport} or {@code null}
+	 */
+	public static ConditionEvaluationReport find(BeanFactory beanFactory) {
+		if (beanFactory != null && beanFactory instanceof ConfigurableBeanFactory) {
+			return ConditionEvaluationReport
+					.get((ConfigurableListableBeanFactory) beanFactory);
+		}
+		return null;
 	}
 
 	/**

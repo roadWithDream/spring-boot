@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -136,11 +136,7 @@ public class ConfigurationMetadata {
 	}
 
 	private <K, V> void add(Map<K, List<V>> map, K key, V value) {
-		List<V> values = map.get(key);
-		if (values == null) {
-			values = new ArrayList<>();
-			map.put(key, values);
-		}
+		List<V> values = map.computeIfAbsent(key, (k) -> new ArrayList<>());
 		values.add(value);
 	}
 

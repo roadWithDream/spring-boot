@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,7 +33,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.http.client.AbstractClientHttpRequestFactoryWrapper;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
-import org.springframework.http.client.support.BasicAuthorizationInterceptor;
+import org.springframework.http.client.support.BasicAuthenticationInterceptor;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
@@ -74,7 +74,7 @@ public class RestTemplateBuilder {
 
 	private final ResponseErrorHandler errorHandler;
 
-	private final BasicAuthorizationInterceptor basicAuthorization;
+	private final BasicAuthenticationInterceptor basicAuthentication;
 
 	private final Set<RestTemplateCustomizer> restTemplateCustomizers;
 
@@ -95,7 +95,7 @@ public class RestTemplateBuilder {
 		this.requestFactorySupplier = null;
 		this.uriTemplateHandler = null;
 		this.errorHandler = null;
-		this.basicAuthorization = null;
+		this.basicAuthentication = null;
 		this.restTemplateCustomizers = Collections
 				.unmodifiableSet(new LinkedHashSet<>(Arrays.asList(customizers)));
 		this.requestFactoryCustomizer = new RequestFactoryCustomizer();
@@ -106,7 +106,7 @@ public class RestTemplateBuilder {
 			Set<HttpMessageConverter<?>> messageConverters,
 			Supplier<ClientHttpRequestFactory> requestFactorySupplier,
 			UriTemplateHandler uriTemplateHandler, ResponseErrorHandler errorHandler,
-			BasicAuthorizationInterceptor basicAuthorization,
+			BasicAuthenticationInterceptor basicAuthentication,
 			Set<RestTemplateCustomizer> restTemplateCustomizers,
 			RequestFactoryCustomizer requestFactoryCustomizer,
 			Set<ClientHttpRequestInterceptor> interceptors) {
@@ -116,7 +116,7 @@ public class RestTemplateBuilder {
 		this.requestFactorySupplier = requestFactorySupplier;
 		this.uriTemplateHandler = uriTemplateHandler;
 		this.errorHandler = errorHandler;
-		this.basicAuthorization = basicAuthorization;
+		this.basicAuthentication = basicAuthentication;
 		this.restTemplateCustomizers = restTemplateCustomizers;
 		this.requestFactoryCustomizer = requestFactoryCustomizer;
 		this.interceptors = interceptors;
@@ -132,7 +132,7 @@ public class RestTemplateBuilder {
 	public RestTemplateBuilder detectRequestFactory(boolean detectRequestFactory) {
 		return new RestTemplateBuilder(detectRequestFactory, this.rootUri,
 				this.messageConverters, this.requestFactorySupplier,
-				this.uriTemplateHandler, this.errorHandler, this.basicAuthorization,
+				this.uriTemplateHandler, this.errorHandler, this.basicAuthentication,
 				this.restTemplateCustomizers, this.requestFactoryCustomizer,
 				this.interceptors);
 	}
@@ -146,7 +146,7 @@ public class RestTemplateBuilder {
 	public RestTemplateBuilder rootUri(String rootUri) {
 		return new RestTemplateBuilder(this.detectRequestFactory, rootUri,
 				this.messageConverters, this.requestFactorySupplier,
-				this.uriTemplateHandler, this.errorHandler, this.basicAuthorization,
+				this.uriTemplateHandler, this.errorHandler, this.basicAuthentication,
 				this.restTemplateCustomizers, this.requestFactoryCustomizer,
 				this.interceptors);
 	}
@@ -154,7 +154,8 @@ public class RestTemplateBuilder {
 	/**
 	 * Set the {@link HttpMessageConverter HttpMessageConverters} that should be used with
 	 * the {@link RestTemplate}. Setting this value will replace any previously configured
-	 * converters.
+	 * converters and any converters configured on the builder will replace RestTemplate's
+	 * default converters.
 	 * @param messageConverters the converters to set
 	 * @return a new builder instance
 	 * @see #additionalMessageConverters(HttpMessageConverter...)
@@ -168,7 +169,8 @@ public class RestTemplateBuilder {
 	/**
 	 * Set the {@link HttpMessageConverter HttpMessageConverters} that should be used with
 	 * the {@link RestTemplate}. Setting this value will replace any previously configured
-	 * converters.
+	 * converters and any converters configured on the builder will replace RestTemplate's
+	 * default converters.
 	 * @param messageConverters the converters to set
 	 * @return a new builder instance
 	 * @see #additionalMessageConverters(HttpMessageConverter...)
@@ -180,13 +182,14 @@ public class RestTemplateBuilder {
 				Collections.unmodifiableSet(
 						new LinkedHashSet<HttpMessageConverter<?>>(messageConverters)),
 				this.requestFactorySupplier, this.uriTemplateHandler, this.errorHandler,
-				this.basicAuthorization, this.restTemplateCustomizers,
+				this.basicAuthentication, this.restTemplateCustomizers,
 				this.requestFactoryCustomizer, this.interceptors);
 	}
 
 	/**
 	 * Add additional {@link HttpMessageConverter HttpMessageConverters} that should be
-	 * used with the {@link RestTemplate}.
+	 * used with the {@link RestTemplate}. Any converters configured on the builder will
+	 * replace RestTemplate's default converters.
 	 * @param messageConverters the converters to add
 	 * @return a new builder instance
 	 * @see #messageConverters(HttpMessageConverter...)
@@ -199,7 +202,8 @@ public class RestTemplateBuilder {
 
 	/**
 	 * Add additional {@link HttpMessageConverter HttpMessageConverters} that should be
-	 * used with the {@link RestTemplate}.
+	 * used with the {@link RestTemplate}. Any converters configured on the builder will
+	 * replace RestTemplate's default converters.
 	 * @param messageConverters the converters to add
 	 * @return a new builder instance
 	 * @see #messageConverters(HttpMessageConverter...)
@@ -210,7 +214,7 @@ public class RestTemplateBuilder {
 		return new RestTemplateBuilder(this.detectRequestFactory, this.rootUri,
 				append(this.messageConverters, messageConverters),
 				this.requestFactorySupplier, this.uriTemplateHandler, this.errorHandler,
-				this.basicAuthorization, this.restTemplateCustomizers,
+				this.basicAuthentication, this.restTemplateCustomizers,
 				this.requestFactoryCustomizer, this.interceptors);
 	}
 
@@ -226,7 +230,7 @@ public class RestTemplateBuilder {
 				Collections.unmodifiableSet(
 						new LinkedHashSet<>(new RestTemplate().getMessageConverters())),
 				this.requestFactorySupplier, this.uriTemplateHandler, this.errorHandler,
-				this.basicAuthorization, this.restTemplateCustomizers,
+				this.basicAuthentication, this.restTemplateCustomizers,
 				this.requestFactoryCustomizer, this.interceptors);
 	}
 
@@ -259,7 +263,7 @@ public class RestTemplateBuilder {
 		Assert.notNull(interceptors, "interceptors must not be null");
 		return new RestTemplateBuilder(this.detectRequestFactory, this.rootUri,
 				this.messageConverters, this.requestFactorySupplier,
-				this.uriTemplateHandler, this.errorHandler, this.basicAuthorization,
+				this.uriTemplateHandler, this.errorHandler, this.basicAuthentication,
 				this.restTemplateCustomizers, this.requestFactoryCustomizer,
 				Collections.unmodifiableSet(new LinkedHashSet<>(interceptors)));
 	}
@@ -291,7 +295,7 @@ public class RestTemplateBuilder {
 		Assert.notNull(interceptors, "interceptors must not be null");
 		return new RestTemplateBuilder(this.detectRequestFactory, this.rootUri,
 				this.messageConverters, this.requestFactorySupplier,
-				this.uriTemplateHandler, this.errorHandler, this.basicAuthorization,
+				this.uriTemplateHandler, this.errorHandler, this.basicAuthentication,
 				this.restTemplateCustomizers, this.requestFactoryCustomizer,
 				append(this.interceptors, interceptors));
 	}
@@ -333,7 +337,7 @@ public class RestTemplateBuilder {
 				"RequestFactory Supplier must not be null");
 		return new RestTemplateBuilder(this.detectRequestFactory, this.rootUri,
 				this.messageConverters, requestFactorySupplier, this.uriTemplateHandler,
-				this.errorHandler, this.basicAuthorization, this.restTemplateCustomizers,
+				this.errorHandler, this.basicAuthentication, this.restTemplateCustomizers,
 				this.requestFactoryCustomizer, this.interceptors);
 	}
 
@@ -347,7 +351,7 @@ public class RestTemplateBuilder {
 		Assert.notNull(uriTemplateHandler, "UriTemplateHandler must not be null");
 		return new RestTemplateBuilder(this.detectRequestFactory, this.rootUri,
 				this.messageConverters, this.requestFactorySupplier, uriTemplateHandler,
-				this.errorHandler, this.basicAuthorization, this.restTemplateCustomizers,
+				this.errorHandler, this.basicAuthentication, this.restTemplateCustomizers,
 				this.requestFactoryCustomizer, this.interceptors);
 	}
 
@@ -361,23 +365,24 @@ public class RestTemplateBuilder {
 		Assert.notNull(errorHandler, "ErrorHandler must not be null");
 		return new RestTemplateBuilder(this.detectRequestFactory, this.rootUri,
 				this.messageConverters, this.requestFactorySupplier,
-				this.uriTemplateHandler, errorHandler, this.basicAuthorization,
+				this.uriTemplateHandler, errorHandler, this.basicAuthentication,
 				this.restTemplateCustomizers, this.requestFactoryCustomizer,
 				this.interceptors);
 	}
 
 	/**
 	 * Add HTTP basic authentication to requests. See
-	 * {@link BasicAuthorizationInterceptor} for details.
+	 * {@link BasicAuthenticationInterceptor} for details.
 	 * @param username the user name
 	 * @param password the password
 	 * @return a new builder instance
+	 * @since 2.1.0
 	 */
-	public RestTemplateBuilder basicAuthorization(String username, String password) {
+	public RestTemplateBuilder basicAuthentication(String username, String password) {
 		return new RestTemplateBuilder(this.detectRequestFactory, this.rootUri,
 				this.messageConverters, this.requestFactorySupplier,
 				this.uriTemplateHandler, this.errorHandler,
-				new BasicAuthorizationInterceptor(username, password),
+				new BasicAuthenticationInterceptor(username, password),
 				this.restTemplateCustomizers, this.requestFactoryCustomizer,
 				this.interceptors);
 	}
@@ -413,7 +418,7 @@ public class RestTemplateBuilder {
 				"RestTemplateCustomizers must not be null");
 		return new RestTemplateBuilder(this.detectRequestFactory, this.rootUri,
 				this.messageConverters, this.requestFactorySupplier,
-				this.uriTemplateHandler, this.errorHandler, this.basicAuthorization,
+				this.uriTemplateHandler, this.errorHandler, this.basicAuthentication,
 				Collections.unmodifiableSet(new LinkedHashSet<RestTemplateCustomizer>(
 						restTemplateCustomizers)),
 				this.requestFactoryCustomizer, this.interceptors);
@@ -447,7 +452,7 @@ public class RestTemplateBuilder {
 		Assert.notNull(customizers, "RestTemplateCustomizers must not be null");
 		return new RestTemplateBuilder(this.detectRequestFactory, this.rootUri,
 				this.messageConverters, this.requestFactorySupplier,
-				this.uriTemplateHandler, this.errorHandler, this.basicAuthorization,
+				this.uriTemplateHandler, this.errorHandler, this.basicAuthentication,
 				append(this.restTemplateCustomizers, customizers),
 				this.requestFactoryCustomizer, this.interceptors);
 	}
@@ -461,22 +466,10 @@ public class RestTemplateBuilder {
 	public RestTemplateBuilder setConnectTimeout(Duration connectTimeout) {
 		return new RestTemplateBuilder(this.detectRequestFactory, this.rootUri,
 				this.messageConverters, this.requestFactorySupplier,
-				this.uriTemplateHandler, this.errorHandler, this.basicAuthorization,
+				this.uriTemplateHandler, this.errorHandler, this.basicAuthentication,
 				this.restTemplateCustomizers,
 				this.requestFactoryCustomizer.connectTimeout(connectTimeout),
 				this.interceptors);
-	}
-
-	/**
-	 * Sets the connection timeout in milliseconds on the underlying
-	 * {@link ClientHttpRequestFactory}.
-	 * @param connectTimeout the connection timeout in milliseconds
-	 * @return a new builder instance.
-	 * @deprecated since 2.1.0 in favor of {@link #setConnectTimeout(Duration)}
-	 */
-	@Deprecated
-	public RestTemplateBuilder setConnectTimeout(int connectTimeout) {
-		return setConnectTimeout(Duration.ofMillis(connectTimeout));
 	}
 
 	/**
@@ -488,22 +481,10 @@ public class RestTemplateBuilder {
 	public RestTemplateBuilder setReadTimeout(Duration readTimeout) {
 		return new RestTemplateBuilder(this.detectRequestFactory, this.rootUri,
 				this.messageConverters, this.requestFactorySupplier,
-				this.uriTemplateHandler, this.errorHandler, this.basicAuthorization,
+				this.uriTemplateHandler, this.errorHandler, this.basicAuthentication,
 				this.restTemplateCustomizers,
 				this.requestFactoryCustomizer.readTimeout(readTimeout),
 				this.interceptors);
-	}
-
-	/**
-	 * Sets the read timeout in milliseconds on the underlying
-	 * {@link ClientHttpRequestFactory}.
-	 * @param readTimeout the read timeout in milliseconds
-	 * @return a new builder instance.
-	 * @deprecated since 2.1.0 in favour of {@link #setReadTimeout(Duration)}
-	 */
-	@Deprecated
-	public RestTemplateBuilder setReadTimeout(int readTimeout) {
-		return setReadTimeout(Duration.ofMillis(readTimeout));
 	}
 
 	/**
@@ -552,8 +533,8 @@ public class RestTemplateBuilder {
 		if (this.rootUri != null) {
 			RootUriTemplateHandler.addTo(restTemplate, this.rootUri);
 		}
-		if (this.basicAuthorization != null) {
-			restTemplate.getInterceptors().add(this.basicAuthorization);
+		if (this.basicAuthentication != null) {
+			restTemplate.getInterceptors().add(this.basicAuthentication);
 		}
 		restTemplate.getInterceptors().addAll(this.interceptors);
 		if (!CollectionUtils.isEmpty(this.restTemplateCustomizers)) {

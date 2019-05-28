@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,9 +16,13 @@
 
 package org.springframework.boot.actuate.autoconfigure.metrics.web.client;
 
+import java.time.Duration;
+
 import io.micrometer.core.instrument.MeterRegistry;
-import org.junit.Rule;
-import org.junit.Test;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.distribution.HistogramSnapshot;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import reactor.core.publisher.Mono;
 
 import org.springframework.boot.actuate.autoconfigure.metrics.test.MetricsRun;
@@ -27,7 +31,7 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.autoconfigure.web.reactive.function.client.WebClientAutoConfiguration;
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
-import org.springframework.boot.test.rule.OutputCapture;
+import org.springframework.boot.test.extension.OutputCapture;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -53,8 +57,8 @@ public class WebClientMetricsConfigurationTests {
 			.withConfiguration(AutoConfigurations.of(WebClientAutoConfiguration.class,
 					HttpClientMetricsAutoConfiguration.class));
 
-	@Rule
-	public OutputCapture out = new OutputCapture();
+	@RegisterExtension
+	public OutputCapture output = new OutputCapture();
 
 	@Test
 	public void webClientCreatedWithBuilderIsInstrumented() {
@@ -80,9 +84,8 @@ public class WebClientMetricsConfigurationTests {
 				.run((context) -> {
 					MeterRegistry registry = getInitializedMeterRegistry(context);
 					assertThat(registry.get("http.client.requests").meters()).hasSize(2);
-					assertThat(this.out.toString()).contains(
-							"Reached the maximum number of URI tags for 'http.client.requests'.");
-					assertThat(this.out.toString())
+					assertThat(this.output.toString()).contains(
+							"Reached the maximum number of URI tags for 'http.client.requests'.")
 							.contains("Are you using 'uriVariables'?");
 				});
 	}
@@ -94,10 +97,27 @@ public class WebClientMetricsConfigurationTests {
 				.run((context) -> {
 					MeterRegistry registry = getInitializedMeterRegistry(context);
 					assertThat(registry.get("http.client.requests").meters()).hasSize(3);
-					assertThat(this.out.toString()).doesNotContain(
-							"Reached the maximum number of URI tags for 'http.client.requests'.");
-					assertThat(this.out.toString())
+					assertThat(this.output.toString()).doesNotContain(
+							"Reached the maximum number of URI tags for 'http.client.requests'.")
 							.doesNotContain("Are you using 'uriVariables'?");
+				});
+	}
+
+	@Test
+	public void autoTimeRequestsCanBeConfigured() {
+		this.contextRunner.withPropertyValues(
+				"management.metrics.web.client.request.autotime.enabled=true",
+				"management.metrics.web.client.request.autotime.percentiles=0.5,0.7",
+				"management.metrics.web.client.request.autotime.percentiles-histogram=true")
+				.run((context) -> {
+					MeterRegistry registry = getInitializedMeterRegistry(context);
+					Timer timer = registry.get("http.client.requests").timer();
+					HistogramSnapshot snapshot = timer.takeSnapshot();
+					assertThat(snapshot.percentileValues()).hasSize(2);
+					assertThat(snapshot.percentileValues()[0].percentile())
+							.isEqualTo(0.5);
+					assertThat(snapshot.percentileValues()[1].percentile())
+							.isEqualTo(0.7);
 				});
 	}
 
@@ -106,7 +126,8 @@ public class WebClientMetricsConfigurationTests {
 		WebClient webClient = mockWebClient(context.getBean(WebClient.Builder.class));
 		MeterRegistry registry = context.getBean(MeterRegistry.class);
 		for (int i = 0; i < 3; i++) {
-			webClient.get().uri("http://example.org/projects/" + i).exchange().block();
+			webClient.get().uri("https://example.org/projects/" + i).exchange()
+					.block(Duration.ofSeconds(30));
 		}
 		return registry;
 	}
@@ -114,8 +135,8 @@ public class WebClientMetricsConfigurationTests {
 	private void validateWebClient(WebClient.Builder builder, MeterRegistry registry) {
 		WebClient webClient = mockWebClient(builder);
 		assertThat(registry.find("http.client.requests").meter()).isNull();
-		webClient.get().uri("http://example.org/projects/{project}", "spring-boot")
-				.exchange().block();
+		webClient.get().uri("https://example.org/projects/{project}", "spring-boot")
+				.exchange().block(Duration.ofSeconds(30));
 		assertThat(registry.find("http.client.requests")
 				.tags("uri", "/projects/{project}").meter()).isNotNull();
 	}
@@ -127,7 +148,7 @@ public class WebClientMetricsConfigurationTests {
 		return builder.clientConnector(connector).build();
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class CustomTagsProviderConfig {
 
 		@Bean

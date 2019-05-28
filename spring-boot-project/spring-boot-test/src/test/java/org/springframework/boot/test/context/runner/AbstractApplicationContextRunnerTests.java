@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,9 +21,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.gson.Gson;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.boot.context.annotation.UserConfigurations;
 import org.springframework.boot.test.context.FilteredClassLoader;
@@ -39,7 +37,8 @@ import org.springframework.core.type.AnnotatedTypeMetadata;
 import org.springframework.util.ClassUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIOException;
 
 /**
  * Abstract tests for {@link AbstractApplicationContextRunner} implementations.
@@ -51,9 +50,6 @@ import static org.junit.Assert.fail;
  * @author Phillip Webb
  */
 public abstract class AbstractApplicationContextRunnerTests<T extends AbstractApplicationContextRunner<T, C, A>, C extends ConfigurableApplicationContext, A extends ApplicationContextAssertProvider<C>> {
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
 
 	@Test
 	public void runWithInitializerShouldInitialize() {
@@ -141,6 +137,36 @@ public abstract class AbstractApplicationContextRunnerTests<T extends AbstractAp
 	}
 
 	@Test
+	public void runWithUserNamedBeanShouldRegisterBean() {
+		get().withBean("foo", String.class, () -> "foo")
+				.run((context) -> assertThat(context).hasBean("foo"));
+	}
+
+	@Test
+	public void runWithUserBeanShouldRegisterBeanWithDefaultName() {
+		get().withBean(String.class, () -> "foo")
+				.run((context) -> assertThat(context).hasBean("string"));
+	}
+
+	@Test
+	public void runWithUserBeanShouldBeRegisteredInOrder() {
+		get().withBean(String.class, () -> "one").withBean(String.class, () -> "two")
+				.withBean(String.class, () -> "three").run((context) -> {
+					assertThat(context).hasBean("string");
+					assertThat(context.getBean("string")).isEqualTo("three");
+				});
+	}
+
+	@Test
+	public void runWithConfigurationsAndUserBeanShouldRegisterUserBeanLast() {
+		get().withUserConfiguration(FooConfig.class)
+				.withBean("foo", String.class, () -> "overridden").run((context) -> {
+					assertThat(context).hasBean("foo");
+					assertThat(context.getBean("foo")).isEqualTo("overridden");
+				});
+	}
+
+	@Test
 	public void runWithMultipleConfigurationsShouldRegisterAllConfigurations() {
 		get().withUserConfiguration(FooConfig.class)
 				.withConfiguration(UserConfigurations.of(BarConfig.class))
@@ -156,16 +182,9 @@ public abstract class AbstractApplicationContextRunnerTests<T extends AbstractAp
 	@Test
 	public void runWithClassLoaderShouldSetClassLoaderOnContext() {
 		get().withClassLoader(new FilteredClassLoader(Gson.class.getPackage().getName()))
-				.run((context) -> {
-					try {
-						ClassUtils.forName(Gson.class.getName(),
-								context.getClassLoader());
-						fail("Should have thrown a ClassNotFoundException");
-					}
-					catch (ClassNotFoundException ex) {
-						// expected
-					}
-				});
+				.run((context) -> assertThatExceptionOfType(ClassNotFoundException.class)
+						.isThrownBy(() -> ClassUtils.forName(Gson.class.getName(),
+								context.getClassLoader())));
 	}
 
 	@Test
@@ -178,11 +197,9 @@ public abstract class AbstractApplicationContextRunnerTests<T extends AbstractAp
 
 	@Test
 	public void thrownRuleWorksWithCheckedException() {
-		get().run((context) -> {
-			this.thrown.expect(IOException.class);
-			this.thrown.expectMessage("Expected message");
-			throwCheckedException("Expected message");
-		});
+		get().run((context) -> assertThatIOException()
+				.isThrownBy(() -> throwCheckedException("Expected message"))
+				.withMessageContaining("Expected message"));
 	}
 
 	protected abstract T get();
@@ -191,7 +208,7 @@ public abstract class AbstractApplicationContextRunnerTests<T extends AbstractAp
 		throw new IOException(message);
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class FailingConfig {
 
 		@Bean
@@ -201,7 +218,7 @@ public abstract class AbstractApplicationContextRunnerTests<T extends AbstractAp
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class FooConfig {
 
 		@Bean
@@ -211,7 +228,7 @@ public abstract class AbstractApplicationContextRunnerTests<T extends AbstractAp
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class BarConfig {
 
 		@Bean
@@ -221,7 +238,7 @@ public abstract class AbstractApplicationContextRunnerTests<T extends AbstractAp
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@Conditional(FilteredClassLoaderCondition.class)
 	static class ConditionalConfig {
 

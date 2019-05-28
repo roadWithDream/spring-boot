@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,9 +17,10 @@
 package org.springframework.boot.autoconfigure.freemarker;
 
 import java.io.StringWriter;
+import java.time.Duration;
 import java.util.Locale;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -60,7 +61,8 @@ public class FreeMarkerAutoConfigurationReactiveIntegrationTests {
 	public void defaultViewResolution() {
 		this.contextRunner.run((context) -> {
 			MockServerWebExchange exchange = render(context, "home");
-			String result = exchange.getResponse().getBodyAsString().block();
+			String result = exchange.getResponse().getBodyAsString()
+					.block(Duration.ofSeconds(30));
 			assertThat(result).contains("home");
 			assertThat(exchange.getResponse().getHeaders().getContentType())
 					.isEqualTo(MediaType.TEXT_HTML);
@@ -72,7 +74,8 @@ public class FreeMarkerAutoConfigurationReactiveIntegrationTests {
 		this.contextRunner.withPropertyValues("spring.freemarker.prefix:prefix/")
 				.run((context) -> {
 					MockServerWebExchange exchange = render(context, "prefixed");
-					String result = exchange.getResponse().getBodyAsString().block();
+					String result = exchange.getResponse().getBodyAsString()
+							.block(Duration.ofSeconds(30));
 					assertThat(result).contains("prefixed");
 				});
 	}
@@ -82,7 +85,8 @@ public class FreeMarkerAutoConfigurationReactiveIntegrationTests {
 		this.contextRunner.withPropertyValues("spring.freemarker.suffix:.freemarker")
 				.run((context) -> {
 					MockServerWebExchange exchange = render(context, "suffixed");
-					String result = exchange.getResponse().getBodyAsString().block();
+					String result = exchange.getResponse().getBodyAsString()
+							.block(Duration.ofSeconds(30));
 					assertThat(result).contains("suffixed");
 				});
 	}
@@ -93,7 +97,8 @@ public class FreeMarkerAutoConfigurationReactiveIntegrationTests {
 				"spring.freemarker.templateLoaderPath:classpath:/custom-templates/")
 				.run((context) -> {
 					MockServerWebExchange exchange = render(context, "custom");
-					String result = exchange.getResponse().getBodyAsString().block();
+					String result = exchange.getResponse().getBodyAsString()
+							.block(Duration.ofSeconds(30));
 					assertThat(result).contains("custom");
 				});
 	}
@@ -128,7 +133,8 @@ public class FreeMarkerAutoConfigurationReactiveIntegrationTests {
 		Mono<View> view = resolver.resolveViewName(viewName, Locale.UK);
 		MockServerWebExchange exchange = MockServerWebExchange
 				.from(MockServerHttpRequest.get("/path"));
-		view.flatMap((v) -> v.render(null, MediaType.TEXT_HTML, exchange)).block();
+		view.flatMap((v) -> v.render(null, MediaType.TEXT_HTML, exchange))
+				.block(Duration.ofSeconds(30));
 		return exchange;
 	}
 

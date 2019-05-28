@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -171,7 +171,22 @@ public class SysVinitLaunchScriptIT {
 
 	@Test
 	public void basicLaunch() throws Exception {
-		doLaunch("basic-launch.sh");
+		String output = doTest("basic-launch.sh");
+		assertThat(output).doesNotContain("PID_FOLDER");
+	}
+
+	@Test
+	public void launchWithMissingLogFolderGeneratesAWarning() throws Exception {
+		String output = doTest("launch-with-missing-log-folder.sh");
+		assertThat(output).has(coloredString(AnsiColor.YELLOW,
+				"LOG_FOLDER /does/not/exist does not exist. Falling back to /tmp"));
+	}
+
+	@Test
+	public void launchWithMissingPidFolderGeneratesAWarning() throws Exception {
+		String output = doTest("launch-with-missing-pid-folder.sh");
+		assertThat(output).has(coloredString(AnsiColor.YELLOW,
+				"PID_FOLDER /does/not/exist does not exist. Falling back to /tmp"));
 	}
 
 	@Test

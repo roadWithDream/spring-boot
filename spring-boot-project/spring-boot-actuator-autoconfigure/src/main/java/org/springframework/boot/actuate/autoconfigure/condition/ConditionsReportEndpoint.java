@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -42,7 +42,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
 
 /**
- * {@link Endpoint} to expose the {@link ConditionEvaluationReport}.
+ * {@link Endpoint @Endpoint} to expose the {@link ConditionEvaluationReport}.
  *
  * @author Greg Turnquist
  * @author Phillip Webb
@@ -123,8 +123,7 @@ public class ConditionsReportEndpoint {
 			this.negativeMatches = new LinkedHashMap<>();
 			this.exclusions = report.getExclusions();
 			this.unconditionalClasses = report.getUnconditionalClasses();
-			report.getConditionAndOutcomesBySource().forEach(
-					(source, conditionAndOutcomes) -> add(source, conditionAndOutcomes));
+			report.getConditionAndOutcomesBySource().forEach(this::add);
 			this.parentId = (context.getParent() != null) ? context.getParent().getId()
 					: null;
 		}

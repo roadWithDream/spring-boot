@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,20 +26,23 @@ import javax.servlet.http.HttpServletResponse;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
-import org.junit.Rule;
-import org.junit.Test;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.distribution.HistogramSnapshot;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 import org.springframework.boot.actuate.autoconfigure.metrics.MetricsAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.metrics.test.MetricsRun;
 import org.springframework.boot.actuate.autoconfigure.metrics.web.TestController;
 import org.springframework.boot.actuate.metrics.web.servlet.DefaultWebMvcTagsProvider;
+import org.springframework.boot.actuate.metrics.web.servlet.LongTaskTimingHandlerInterceptor;
 import org.springframework.boot.actuate.metrics.web.servlet.WebMvcMetricsFilter;
 import org.springframework.boot.actuate.metrics.web.servlet.WebMvcTagsProvider;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.assertj.AssertableWebApplicationContext;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
-import org.springframework.boot.test.rule.OutputCapture;
+import org.springframework.boot.test.extension.OutputCapture;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -47,6 +50,7 @@ import org.springframework.core.Ordered;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -56,6 +60,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * @author Andy Wilkinson
  * @author Dmytro Nosan
+ * @author Tadaya Tsuyukubo
  */
 public class WebMvcMetricsAutoConfigurationTests {
 
@@ -63,7 +68,7 @@ public class WebMvcMetricsAutoConfigurationTests {
 			.with(MetricsRun.simple()).withConfiguration(
 					AutoConfigurations.of(WebMvcMetricsAutoConfiguration.class));
 
-	@Rule
+	@RegisterExtension
 	public OutputCapture output = new OutputCapture();
 
 	@Test
@@ -135,6 +140,40 @@ public class WebMvcMetricsAutoConfigurationTests {
 				});
 	}
 
+	@Test
+	public void autoTimeRequestsCanBeConfigured() {
+		this.contextRunner.withUserConfiguration(TestController.class)
+				.withConfiguration(AutoConfigurations.of(MetricsAutoConfiguration.class,
+						WebMvcAutoConfiguration.class))
+				.withPropertyValues(
+						"management.metrics.web.server.request.autotime.enabled=true",
+						"management.metrics.web.server.request.autotime.percentiles=0.5,0.7",
+						"management.metrics.web.server.request.autotime.percentiles-histogram=true")
+				.run((context) -> {
+					MeterRegistry registry = getInitializedMeterRegistry(context);
+					Timer timer = registry.get("http.server.requests").timer();
+					HistogramSnapshot snapshot = timer.takeSnapshot();
+					assertThat(snapshot.percentileValues()).hasSize(2);
+					assertThat(snapshot.percentileValues()[0].percentile())
+							.isEqualTo(0.5);
+					assertThat(snapshot.percentileValues()[1].percentile())
+							.isEqualTo(0.7);
+				});
+	}
+
+	@Test
+	@SuppressWarnings("rawtypes")
+	public void longTaskTimingInterceptorIsRegistered() {
+		this.contextRunner.withUserConfiguration(TestController.class)
+				.withConfiguration(AutoConfigurations.of(MetricsAutoConfiguration.class,
+						WebMvcAutoConfiguration.class))
+				.run((context) -> assertThat(
+						context.getBean(RequestMappingHandlerMapping.class))
+								.extracting("interceptors").element(0).asList()
+								.extracting((item) -> (Class) item.getClass())
+								.contains(LongTaskTimingHandlerInterceptor.class));
+	}
+
 	private MeterRegistry getInitializedMeterRegistry(
 			AssertableWebApplicationContext context) throws Exception {
 		assertThat(context).hasSingleBean(FilterRegistrationBean.class);
@@ -149,7 +188,7 @@ public class WebMvcMetricsAutoConfigurationTests {
 		return context.getBean(MeterRegistry.class);
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class TagsProviderConfiguration {
 
 		@Bean

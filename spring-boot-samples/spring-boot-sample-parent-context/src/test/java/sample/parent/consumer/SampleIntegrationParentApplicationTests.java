@@ -1,11 +1,11 @@
 /*
- * Copyright 2012-2018 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,11 +16,12 @@
 
 package sample.parent.consumer;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import sample.parent.SampleParentContextApplication;
 import sample.parent.producer.ProducerApplication;
 
@@ -39,36 +40,40 @@ import static org.junit.Assert.fail;
  * @author Dave Syer
  * @author Andy Wilkinson
  */
-public class SampleIntegrationParentApplicationTests {
+class SampleIntegrationParentApplicationTests {
 
-	private static ConfigurableApplicationContext context;
-
-	@BeforeClass
-	public static void start() {
-		context = SpringApplication.run(SampleParentContextApplication.class);
-	}
-
-	@AfterClass
-	public static void stop() {
-		if (context != null) {
-			context.close();
+	@Test
+	void testVanillaExchange(@TempDir Path temp) throws Exception {
+		File inputDir = new File(temp.toFile(), "input");
+		File outputDir = new File(temp.toFile(), "output");
+		ConfigurableApplicationContext app = SpringApplication.run(
+				SampleParentContextApplication.class, "--service.input-dir=" + inputDir,
+				"--service.output-dir=" + outputDir);
+		try {
+			ConfigurableApplicationContext producer = SpringApplication.run(
+					ProducerApplication.class, "--service.input-dir=" + inputDir,
+					"--service.output-dir=" + outputDir, "World");
+			try {
+				awaitOutputContaining(outputDir, "Hello World");
+			}
+			finally {
+				producer.close();
+			}
+		}
+		finally {
+			app.close();
 		}
 	}
 
-	@Test
-	public void testVanillaExchange() throws Exception {
-		SpringApplication.run(ProducerApplication.class, "World");
-		awaitOutputContaining("Hello World");
-	}
-
-	private void awaitOutputContaining(String requiredContents) throws Exception {
+	private void awaitOutputContaining(File outputDir, String requiredContents)
+			throws Exception {
 		long endTime = System.currentTimeMillis() + 30000;
 		String output = null;
 		while (System.currentTimeMillis() < endTime) {
-			Resource[] resources = findResources();
+			Resource[] resources = findResources(outputDir);
 			if (resources.length == 0) {
 				Thread.sleep(200);
-				resources = findResources();
+				resources = findResources(outputDir);
 			}
 			else {
 				output = readResources(resources);
@@ -85,10 +90,10 @@ public class SampleIntegrationParentApplicationTests {
 				+ "'. Output was '" + output + "'");
 	}
 
-	private Resource[] findResources() throws IOException {
+	private Resource[] findResources(File outputDir) throws IOException {
 		return ResourcePatternUtils
 				.getResourcePatternResolver(new DefaultResourceLoader())
-				.getResources("file:target/output/*.txt");
+				.getResources("file:" + outputDir.getAbsolutePath() + "/*.txt");
 	}
 
 	private String readResources(Resource[] resources) throws IOException {
